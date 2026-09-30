@@ -1,0 +1,11 @@
+.build/
+build/
+Taplyne.xcodeproj/
+*.xcuserstate
+.DS_Store
+
+node_modules/
+.wrangler/
+docs/project-environment.json
+docs/taplyne-improvement-catalogue-2026-09-30.docx
+.playwright-mcp/
