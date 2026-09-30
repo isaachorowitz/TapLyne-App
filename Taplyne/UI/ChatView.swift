@@ -76,6 +76,7 @@ struct ChatView: View {
             } else if chat.running {
                 Button { model.control(phone, .pause) } label: { Image(systemName: "pause.fill") }
                     .buttonStyle(IconButtonStyle(size: 30)).help("Pause the agent")
+                .accessibilityLabel("Pause the agent")
             }
             Button {
                 withAnimation(Motion.standard) { chat.reset() }

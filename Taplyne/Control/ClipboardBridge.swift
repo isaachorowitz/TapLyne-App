@@ -42,7 +42,8 @@ import TaplyneServer
 
     func write(_ text: String) throws {
         guard board.changeCount == ownedCount else { throw PhoneServiceError.failed("CLIPBOARD_CHANGED: Clipboard changed during input. Input was stopped to preserve it.") }
-        board.clearContents()
+        // Explicitly allow these new contents to participate in Universal Clipboard.
+        board.prepareForNewContents(with: [])
         guard board.setString(text, forType: .string) else { throw PhoneServiceError.failed("Could not write text to the clipboard.") }
         ownedCount = board.changeCount
     }

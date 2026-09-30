@@ -19,7 +19,7 @@ The Mac needs macOS 15 or later. The release supports Apple silicon and Intel. C
 
 For the built-in chat, install [Claude Code](https://code.claude.com/docs/en/overview) and complete its login. Other agents can connect through MCP or REST. AI provider accounts and charges are separate from Taplyne.
 
-For text entry, enable Handoff and use the same Apple Account on the Mac and iPhone. All text is pasted through Universal Clipboard, including English, Hebrew, emoji and newlines. Newlines are never converted to an Enter keypress.
+Plain English uses Bluetooth keyboard input and requires an English hardware keyboard layout on the iPhone. Supply a visible-text result condition to verify it. Hebrew, emoji and multiline text use Universal Clipboard, which requires Handoff and the same Apple Account on the Mac and iPhone. Newlines and tabs are never converted to keypresses that could submit a form. Clipboard availability and field readback must be checked on your devices. In the current physical-phone checks, English input passed; Hebrew and emoji paste failed even with Handoff enabled. Treat Unicode paste as experimental and inspect the field before continuing.
 
 For Hebrew screen recognition, install the optional local OCR models from a source checkout:
 
@@ -47,7 +47,7 @@ Every automated action returns a fresh screen and a result:
 
 A changed screen alone does not prove a task succeeded. A condition already true before input also remains unverified. Supply a result condition for actions such as opening a screen. Never automatically repeat an uncertain send, purchase or submission. Form filling stops at the first uncertain field and does not submit. A targeted field needs visible focus evidence in its own row before pasting. If focus is unclear, select the field manually and use `fill_field` with `text` and a fresh `frame_id`. It never dismisses a keyboard or form implicitly.
 
-Pointer aiming measures the visible pointer and corrects its position before a click. If the screen moves, the pointer cannot be located, or the target is stale, the action stops. Recalibrate when aiming is uncertain. The driver releases held mouse and keyboard reports on cancellation.
+Pointer aiming measures the visible pointer and corrects its position before a click. It waits for an icon's hover animation to settle and uses the calibrated error tolerance, capped at 30 native pixels. App captions in a recognized icon grid resolve to the associated icon. If the screen moves, the pointer cannot be located, or the target is stale, the action stops. Home remains available on animated screens. The driver releases held mouse and keyboard reports on cancellation.
 
 ## Connect an agent
 
@@ -144,6 +144,7 @@ Use `scripts/build.sh Release ARCHS='arm64 x86_64' ONLY_ACTIVE_ARCH=NO` for a un
 swift test --package-path Packages/TaplyneServer
 bash scripts/test-bluetooth.sh
 bash scripts/test-input.sh
+bash scripts/test-agent.sh
 ```
 
 The server tests cover stale and cross-phone frames, queue cancellation, ambiguity, result verification, bounded scrolling, form uncertainty, REST, MCP and real OCR fixtures. Input tests cover clipboard preservation and cancellation releasing held reports. These checks do not establish physical-device compatibility.
@@ -156,7 +157,7 @@ The one-page website lives in `site/`. Run `npm ci --prefix site`, `npm run chec
 
 - **Phone not found:** unlock it, accept Trust, and check the data cable. `pymobiledevice3 usbmux list` should list the phone.
 - **Black screen:** unlock the phone. If capture stays unavailable, use Restart iPhone in the setup card.
-- **Bluetooth unavailable:** prepare pairing again, then select this Mac from the iPhone's Bluetooth settings. Both HID channels must connect.
+- **Bluetooth unavailable:** prepare pairing again, then select this Mac from the iPhone's Bluetooth settings. This setup action also enables AssistiveTouch. Both HID channels must connect.
 - **Uncertain pointer:** calibrate again on the Home Screen. Avoid touching the phone while aiming.
 - **Text unverified:** check Handoff, the Apple Account and whether the field supports selection and copy. Inspect the value before pasting again.
 - **Hebrew labels missing:** install the optional OCR models and describe the current screen again.

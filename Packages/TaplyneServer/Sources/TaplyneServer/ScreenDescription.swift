@@ -21,10 +21,13 @@ public struct ScreenElement: Codable, Sendable, Equatable, Identifiable {
     /// Native pixels, top-left origin. These are OCR bounds, not native accessibility bounds.
     public var bounds: ScreenRect
     public var source: String
+    /// A visual icon target associated with this caption, when a grid was identified.
+    public var tapTarget: ScreenRect?
 
     public init(id: String = UUID().uuidString, text: String, confidence: Double, bounds: CGRect, source: String = "vision_ocr") {
         self.id = id; self.text = text; self.confidence = confidence
         self.bounds = ScreenRect(bounds); self.source = source
+        self.tapTarget = nil
     }
 }
 
@@ -83,7 +86,7 @@ public struct ScreenDescription: Codable, Sendable, Equatable {
             "elements": elements.map { e -> [String: Any] in
                 ["id": e.id, "text": e.text, "confidence": e.confidence, "source": e.source,
                  "bounds": ["x": e.bounds.x * sx, "y": e.bounds.y * sy, "width": e.bounds.width * sx, "height": e.bounds.height * sy],
-                 "tap_x": e.bounds.cgRect.midX * sx, "tap_y": e.bounds.cgRect.midY * sy,
+                 "tap_x": (e.tapTarget ?? e.bounds).cgRect.midX * sx, "tap_y": (e.tapTarget ?? e.bounds).cgRect.midY * sy,
                  "normalized_frame": ["x": e.bounds.x / Double(width), "y": e.bounds.y / Double(height),
                                       "width": e.bounds.width / Double(width), "height": e.bounds.height / Double(height)]]
             },

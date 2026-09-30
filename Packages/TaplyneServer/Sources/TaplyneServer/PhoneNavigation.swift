@@ -99,23 +99,59 @@ public extension PhoneAutomation {
         do {
         var result = try await navigate(phoneID: phoneID, command: .home)
         completed += 1
+        result = try await settledNavigationScreen(phoneID, generation: generation)
         try await checkGeneration(phoneID, generation)
         if result.screen.matches(name).count == 1 {
             return try await tapLabel(phoneID: phoneID, label: name, frameID: result.screen.frameID, expectation: expectation)
         }
-        result = try await act(phoneID: phoneID,
+        let searches = result.screen.elements.filter {
+            ["q search", "search"].contains(ScreenDescription.normalized($0.text)) &&
+                $0.bounds.y > Double(result.screen.height) * 0.7
+        }
+        if searches.count == 1 {
+            result = try await tapLabel(phoneID: phoneID, elementID: searches[0].id, frameID: result.screen.frameID)
+        } else {
+            result = try await act(phoneID: phoneID,
                                action: .flick(x: result.screen.width / 2, y: result.screen.height / 3, direction: .down),
                                frameID: result.screen.frameID)
+        }
         completed += 1
+        result = try await settledNavigationScreen(phoneID, generation: generation)
         try await checkGeneration(phoneID, generation)
-        result = try await act(phoneID: phoneID, action: .setText(text: name), frameID: result.screen.frameID)
+        result = try await act(phoneID: phoneID, action: .setText(text: name), frameID: result.screen.frameID,
+                               expectation: ActionExpectation(textPresent: name, screenChanged: true))
         completed += 1
         guard result.verification.status == .verified else { result.completedSteps = completed; return result }
+        result = try await settledNavigationScreen(phoneID, generation: generation)
         try await checkGeneration(phoneID, generation)
         // Duplicate app names or search echoes deliberately require an explicit element choice.
-        var opened = try await tapLabel(phoneID: phoneID, label: name, frameID: result.screen.frameID, expectation: expectation)
+        // Spotlight echoes the query at the top. Only a unique app result below
+        // that search field can be selected automatically.
+        let apps = result.screen.matches(name).filter { $0.bounds.y > Double(result.screen.height) * 0.15 }
+        guard apps.count == 1 else {
+            result.verification = Verification(.unverified, method: "app_result", detail: "The search did not identify one app result. Inspect the screen and choose an element; no result was tapped.")
+            result.completedSteps = completed
+            return result
+        }
+        var opened = try await tapLabel(phoneID: phoneID, elementID: apps[0].id, frameID: result.screen.frameID, expectation: expectation)
         opened.completedSteps += completed
         return opened
         } catch { throw InputFailure(error, delivery: completed > 0 ? .delivered : .notDelivered, completedSteps: completed) }
+    }
+
+    private func settledNavigationScreen(_ phoneID: String, generation: UInt64) async throws -> ObservedAction {
+        let deadline = Date().addingTimeInterval(3)
+        var previous = try await service.screenshot(phoneID: phoneID)
+        var stable = 0
+        repeat {
+            try await Task.sleep(for: .milliseconds(200))
+            try await checkGeneration(phoneID, generation)
+            let current = try await service.screenshot(phoneID: phoneID)
+            guard current.capturedAt > previous.capturedAt, Date().timeIntervalSince(current.capturedAt) <= 1 else { continue }
+            stable = ScreenComparison.changed(previous.image, current.image) ? 0 : stable + 1
+            if stable >= 2 { return try await observe(phoneID: phoneID) }
+            previous = current
+        } while Date() < deadline
+        throw PhoneServiceError.failed("SCREEN_MOVING: The navigation transition did not settle. Observe before continuing.")
     }
 }

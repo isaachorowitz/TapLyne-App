@@ -7,6 +7,24 @@ import Testing
 @Suite struct AutomationTests {
     let id = FakePhoneService.online
 
+    @Test func openAppUsesVisibleSearchAndExcludesQueryEcho() async throws {
+        let service = FakePhoneService()
+        service.changeScreensAfterInput = true
+        let automation = PhoneAutomation(service: service) { image in
+            let count = service.actions.count
+            let labels: [(String, Int)] = count < 2 ? [("Q Search", 2200)] :
+                count < 3 ? [("Search or Ask", 160)] : [("Settings", 160), ("Settings", 700)]
+            return ScreenDescription(frameID: UUID().uuidString, capturedAt: image.capturedAt,
+                width: image.width, height: image.height, elements: labels.enumerated().map { index, pair in
+                    ScreenElement(id: "element-\(index)", text: pair.0, confidence: 0.95,
+                        bounds: CGRect(x: 100, y: pair.1, width: 150, height: 50))
+                })
+        }
+        let result = try await automation.openApp(phoneID: id, name: "Settings")
+        #expect(service.actions == [.navigate(.home), .tap(x: 175, y: 2225), .setText(text: "Settings"), .tap(x: 175, y: 725)])
+        #expect(result.completedSteps == 4)
+    }
+
     private func automation(_ service: FakePhoneService, labels: [String] = ["Name", "Email"]) -> PhoneAutomation {
         PhoneAutomation(service: service) { image in
             ScreenDescription(frameID: UUID().uuidString, capturedAt: image.capturedAt, width: image.width, height: image.height,
@@ -58,6 +76,22 @@ import Testing
         let current = ActionReference(image: image, control: PhoneControlState())
         let stale = ScreenImage(image: image.image, capturedAt: Date().addingTimeInterval(-2))
         #expect(throws: PhoneServiceError.self) { try current.validate(current: stale, control: PhoneControlState()) }
+    }
+
+    @Test func globalHomeAllowsAnimationButTapsAndPausedControlStayBlocked() throws {
+        func image(_ gray: CGFloat) -> ScreenImage {
+            let context = CGContext(data: nil, width: 200, height: 400, bitsPerComponent: 8, bytesPerRow: 800,
+                                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!
+            context.setFillColor(gray: gray, alpha: 1); context.fill(CGRect(x: 0, y: 0, width: 200, height: 400))
+            return ScreenImage(image: context.makeImage()!, capturedAt: Date())
+        }
+        let reference = ActionReference(image: image(0), control: PhoneControlState())
+        let current = image(1)
+        try reference.validate(current: current, control: PhoneControlState(), action: .home)
+        try reference.validate(current: current, control: PhoneControlState(), action: .navigate(.home))
+        #expect(throws: PhoneServiceError.self) { try reference.validate(current: current, control: PhoneControlState(), action: .tap(x: 20, y: 20)) }
+        var paused = PhoneControlState(); paused.mode = .paused
+        #expect(throws: PhoneServiceError.self) { try reference.validate(current: current, control: paused, action: .home) }
     }
 
     @Test func labelAmbiguityAndExactElementSelection() async throws {

@@ -12,7 +12,7 @@ Native integration would need an Argent transport extension:
 | Screenshot | `screenshot` | USB capture and a fresh frame reference |
 | Description | `describe_screen` | OCR text and bounds, without native accessibility roles |
 | Tap | `tap_label` or `tap` | Current frame required; pointer feedback may reject aiming |
-| Text | `fill_field` or `type_text` | Universal Clipboard and exact readback where available |
+| Text | `fill_field` or `type_text` | English uses HID; experimental Unicode paste uses Universal Clipboard; verification remains explicit |
 | Navigation | `navigate` or `open_app` | Visible UI, with app-dependent results |
 | Wait | `wait_for_text` | Visible OCR condition |
 | Pause | `control_phone` | Cancels queued input and invalidates frames; resume is human-only in the Mac UI |

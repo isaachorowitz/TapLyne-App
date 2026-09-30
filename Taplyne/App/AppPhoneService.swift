@@ -107,6 +107,7 @@ final class AppPhoneService: PhoneService {
             defer { phone.activity = nil }
             do {
                 let receipt = try await driver.perform(action, referenceImage: reference?.image ?? manualImage)
+                phone.lastError = nil
                 phone.lastVerification = receipt.textVerification
                 return receipt
             } catch {

@@ -76,7 +76,7 @@
           <div class="demo-buttons">
             <button type="button" data-demo="reminder" aria-pressed="true">Make a list <span>↗</span></button>
             <button type="button" data-demo="settings" aria-pressed="false">Find a setting <span>↗</span></button>
-            <button type="button" data-demo="hebrew" aria-pressed="false">Type in Hebrew <span>↗</span></button>
+            <button type="button" data-demo="hebrew" aria-pressed="false">Preview Hebrew <span>↗</span></button>
           </div>
         </div>
         <span class="stage-note">Illustrated demo · Your real phone does the real work.</span>
@@ -115,7 +115,7 @@
         <details><summary>What do I need?<span aria-hidden="true">+</span></summary><p>A Mac on macOS 15+, an unlocked iPhone, and a USB data cable. Taplyne uses AssistiveTouch for Bluetooth control. Device setup also needs pymobiledevice3; the README includes the install command. The built-in agent needs Claude Code and its own login.</p></details>
         <details><summary>Does my iPhone need Developer Mode?<span aria-hidden="true">+</span></summary><p>The capture and input path is designed to work without Developer Mode: USB screen capture plus a Bluetooth mouse and keyboard. Nothing is installed on the phone. This is an early release, and compatibility needs testing across Mac and iPhone versions.</p></details>
         <details><summary>Where does my screen go?<span aria-hidden="true">+</span></summary><p>Taplyne captures the screen locally and has no cloud relay or built-in analytics. An AI agent you connect may send screenshots and text to its provider. The built-in chat uses Claude Code. You choose the agent and when it acts.</p></details>
-        <details><summary>Can it type Hebrew and emoji?<span aria-hidden="true">+</span></summary><p>Yes, through Universal Clipboard, which needs Handoff and the same Apple Account on both devices. Taplyne checks text readback where the field supports it and stops on uncertainty. Hebrew screen recognition uses optional local OCR models.</p></details>
+        <details><summary>Can it type Hebrew and emoji?<span aria-hidden="true">+</span></summary><p>Unicode paste is experimental. It uses Universal Clipboard and requires Handoff and the same Apple Account, but Hebrew and emoji paste failed in our latest phone checks. English keyboard input passed. Taplyne reports uncertain results so you can inspect the field. Hebrew screen recognition uses optional local OCR models.</p></details>
         <details><summary>Is it really free and open source?<span aria-hidden="true">+</span></summary><p>Yes. Taplyne is licensed under AGPL-3.0-only. You can read, run, and modify the source. Your AI provider may have its own charges. Taplyne is experimental and uses private macOS Bluetooth APIs, so expect device-specific rough edges.</p></details>
       </div>
     </section>

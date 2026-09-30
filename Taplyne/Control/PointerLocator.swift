@@ -92,7 +92,7 @@ enum PointerLocator {
         motion(before: before, after: after, origin: origin, maxBlobSize: maxBlobSize)?.end
     }
 
-    static func motion(before: CGImage, after: CGImage, origin: CGPoint, maxBlobSize: CGFloat = 100) -> (start: Blob, end: Blob)? {
+    static func motion(before: CGImage, after: CGImage, origin: CGPoint, maxBlobSize: CGFloat = 100, expectedTarget: CGPoint? = nil) -> (start: Blob, end: Blob)? {
         guard let a = Gray(before), let b = Gray(after) else { return nil }
         let blobs = changedBlobs(a, b)
             .filter { $0.bounds.width <= maxBlobSize && $0.bounds.height <= maxBlobSize }
@@ -101,8 +101,23 @@ enum PointerLocator {
         let anchor = blobs.filter { hypot($0.center.x - origin.x, $0.center.y - origin.y) < 150 }
             .min { hypot($0.center.x - origin.x, $0.center.y - origin.y) < hypot($1.center.x - origin.x, $1.center.y - origin.y) }
         guard let anchor else { return nil }
-        let candidates = blobs.filter {
+        var candidates = blobs.filter {
             return hypot($0.center.x - anchor.center.x, $0.center.y - anchor.center.y) > max(anchor.bounds.width, anchor.bounds.height)
+        }
+        if let target = expectedTarget {
+            // iOS enlarges an icon beneath the pointer. Its changed outline and
+            // the circle can be separate, overlapping blobs from the same hover.
+            let nearby = candidates.filter { hypot($0.center.x - target.x, $0.center.y - target.y) < 150 }
+            if let largest = nearby.max(by: { $0.pixelCount < $1.pixelCount }) {
+                let group = nearby.filter { largest.bounds.insetBy(dx: -12, dy: -12).intersects($0.bounds) }
+                let bounds = group.reduce(largest.bounds) { $0.union($1.bounds) }
+                guard bounds.width <= maxBlobSize, bounds.height <= maxBlobSize else { return nil }
+                let outside = candidates.filter { item in !group.contains { $0.bounds == item.bounds } }
+                guard !outside.contains(where: { $0.pixelCount >= max(12, anchor.pixelCount / 2) }) else { return nil }
+                let merged = Blob(center: CGPoint(x: bounds.midX, y: bounds.midY),
+                                  pixelCount: group.reduce(0) { $0 + $1.pixelCount }, bounds: bounds)
+                candidates = outside + [merged]
+            }
         }
         guard let best = candidates.max(by: { $0.pixelCount < $1.pixelCount }) else { return nil }
         // Anything else of similar size means the screen itself changed.

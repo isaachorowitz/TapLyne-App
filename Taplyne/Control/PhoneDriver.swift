@@ -19,6 +19,7 @@ final class PhoneDriver {
     var frameProvider: (() async throws -> ScreenImage)?
 
     private(set) var pointer: CGPoint?
+    private var pointerRegion: CGRect?
     private var delivery: InputDelivery = .notDelivered
     private var referenceImage: ScreenImage?
     private let log = Logger(subsystem: "agency.ziplyne.taplyne", category: "driver")
@@ -33,10 +34,10 @@ final class PhoneDriver {
     // MARK: - Actions
 
     func perform(_ action: PhoneAction, referenceImage: ScreenImage? = nil) async throws -> InputReceipt {
-        delivery = .notDelivered; self.referenceImage = referenceImage
+        delivery = .notDelivered; self.referenceImage = action.requiresFrameReference ? referenceImage : nil
         defer { self.referenceImage = nil }
         do { return try await deliver(action) }
-        catch { await releaseInput(); pointer = nil; throw InputFailure(error, delivery: delivery) }
+        catch { await releaseInput(); invalidatePointer(); throw InputFailure(error, delivery: delivery) }
     }
 
     func releaseInput() async {
@@ -48,7 +49,7 @@ final class PhoneDriver {
         }.value
     }
 
-    func invalidatePointer() { pointer = nil }
+    func invalidatePointer() { pointer = nil; pointerRegion = nil }
 
     private func deliver(_ action: PhoneAction) async throws -> InputReceipt {
         try Task.checkCancellation()
@@ -101,8 +102,9 @@ final class PhoneDriver {
         for _ in 0 ..< profile.anchorReports {
             try await mouse(MouseReport(dX: -127, dY: -127))
         }
-        try await sleep(ms: 40)
+        try await sleep(ms: 200)
         pointer = profile.anchorPoint ?? .zero
+        pointerRegion = pointer.map { CGRect(x: $0.x - 40, y: $0.y - 40, width: 80, height: 80) }
     }
 
     /// Moves the pointer to a screen pixel.
@@ -115,16 +117,18 @@ final class PhoneDriver {
         guard let frameProvider else { throw PhoneServiceError.failed("Pointer feedback is unavailable. Reconnect capture before clicking.") }
         let baseline = try await frameProvider()
         let oldPointer = pointer
+        var oldRegion = pointerRegion
         if let referenceImage {
             try ensureStable(referenceImage, baseline, target: target, ignoring: [])
         }
         if pointer == nil || profile.anchorEveryMove { try await anchor() }
         var before = try await frameProvider()
         var baselinePointer = oldPointer
-        if let motion = PointerLocator.motion(before: baseline.image, after: before.image, origin: pointer ?? .zero) {
+        if let motion = PointerLocator.motion(before: baseline.image, after: before.image, origin: pointer ?? .zero, maxBlobSize: 320, expectedTarget: oldPointer) {
             baselinePointer = motion.end.center // Reverse movement: the distant blob was the old pointer.
+            oldRegion = motion.end.bounds.insetBy(dx: -16, dy: -16)
         }
-        try ensureStable(baseline, before, target: target, ignoring: [baselinePointer, pointer].compactMap { $0 })
+        try ensureStable(baseline, before, target: target, ignoring: [baselinePointer, pointer].compactMap { $0 }, regions: [oldRegion, pointerRegion].compactMap { $0 })
         for _ in 0..<3 {
             // Separate the old and new circles so their outlines can be measured independently.
             if hypot(target.x - (pointer?.x ?? 0), target.y - (pointer?.y ?? 0)) < 160 {
@@ -136,10 +140,10 @@ final class PhoneDriver {
             let after = try await aimLeg(to: target, before: before)
             guard let actual = pointer else { throw PhoneServiceError.failed("Pointer position was lost.") }
             let error = hypot(actual.x - target.x, actual.y - target.y)
-            if error <= 18 {
+            if error <= max(18, min(30, profile.verifiedErrorPx ?? 18)) {
                 let final = try await frameProvider()
-                try ensureStable(baseline, final, target: target, ignoring: [baselinePointer, actual].compactMap { $0 })
-                try ensureStable(after, final, target: target, ignoring: [actual])
+                try ensureStable(baseline, final, target: target, ignoring: [baselinePointer, actual].compactMap { $0 }, regions: [oldRegion, pointerRegion].compactMap { $0 })
+                try ensureStable(after, final, target: target, ignoring: [actual], regions: [pointerRegion].compactMap { $0 })
                 return
             }
             let traveled = hypot(actual.x - start.x, actual.y - start.y)
@@ -149,7 +153,7 @@ final class PhoneDriver {
             before = after
         }
         pointer = nil
-        throw PhoneServiceError.failed("POINTER_UNCERTAIN: Pointer could not be aimed within 18 pixels. No click was sent. Recalibrate or take over manually.")
+        throw PhoneServiceError.failed("POINTER_UNCERTAIN: Pointer could not be aimed within the calibrated tolerance. No click was sent. Recalibrate or take over manually.")
     }
 
     func validateTextTarget(_ baseline: ScreenImage?) async throws {
@@ -168,10 +172,10 @@ final class PhoneDriver {
         return try await frameProvider?()
     }
 
-    private func ensureStable(_ before: ScreenImage, _ after: ScreenImage, target: CGPoint, ignoring points: [CGPoint]) throws {
+    private func ensureStable(_ before: ScreenImage, _ after: ScreenImage, target: CGPoint, ignoring points: [CGPoint], regions: [CGRect] = []) throws {
         guard Date().timeIntervalSince(after.capturedAt) <= 1,
-              ScreenComparison.stableForInput(before.image, after.image, ignoring: points),
-              !ScreenComparison.targetChanged(before.image, after.image, around: target, ignoring: points) else {
+              ScreenComparison.stableForInput(before.image, after.image, ignoring: points, ignoringRegions: regions),
+              !ScreenComparison.targetChanged(before.image, after.image, around: target, ignoring: points, ignoringRegions: regions) else {
             throw PhoneServiceError.failed("STALE_FRAME: Screen or target changed while aiming. No click was sent.")
         }
     }
@@ -179,14 +183,32 @@ final class PhoneDriver {
     private func aimLeg(to target: CGPoint, before: ScreenImage) async throws -> ScreenImage {
         let origin = pointer ?? .zero
         try await glide(to: target, buttons: [])
-        guard let after = try await frameProvider?(), after.width == before.width, after.height == before.height,
-              let motion = PointerLocator.motion(before: before.image, after: after.image, origin: origin),
-              ScreenComparison.stableForInput(before.image, after.image, ignoring: [motion.start.center, motion.end.center]) else {
-            pointer = nil
-            throw PhoneServiceError.failed("POINTER_UNCERTAIN: Screen changed or pointer could not be located. No click was sent.")
-        }
-        pointer = motion.end.center
-        return after
+        // USB capture can lag HID motion, and an iOS hover continues growing
+        // after the cursor arrives. Observe that one move until its shape settles.
+        // This never resends motion or a click while waiting for feedback.
+        try await sleep(ms: 200)
+        let deadline = Date().addingTimeInterval(1.2)
+        var previous: PointerLocator.Blob?
+        repeat {
+            try Task.checkCancellation()
+            if let after = try await frameProvider?(), after.width == before.width, after.height == before.height,
+               let motion = PointerLocator.motion(before: before.image, after: after.image, origin: origin, maxBlobSize: 320, expectedTarget: target),
+               ScreenComparison.stableForInput(before.image, after.image, ignoring: [motion.start.center, motion.end.center],
+                   ignoringRegions: [motion.start.bounds, motion.end.bounds].map { $0.insetBy(dx: -16, dy: -16) }) {
+                if let previous,
+                   hypot(previous.center.x - motion.end.center.x, previous.center.y - motion.end.center.y) < 10,
+                   abs(previous.bounds.width - motion.end.bounds.width) <= 12,
+                   abs(previous.bounds.height - motion.end.bounds.height) <= 12 {
+                    pointer = motion.end.center
+                    pointerRegion = motion.end.bounds.insetBy(dx: -16, dy: -16)
+                    return after
+                }
+                previous = motion.end
+            } else { previous = nil }
+            try await sleep(ms: 80)
+        } while Date() < deadline
+        invalidatePointer()
+        throw PhoneServiceError.failed("POINTER_UNCERTAIN: Screen changed or pointer could not be located. No click was sent. Enable AssistiveTouch on the iPhone, then recalibrate on a still Home Screen.")
     }
 
     /// Moves by a mouse-unit vector in equal-length steps. Used by calibration.

@@ -26,11 +26,14 @@ final class AgentChat: ObservableObject {
     var cancelInput: (String?, PhoneControlCommand) -> Void = { _, _ in }
     private var pendingResume = false
     private var stopping = false
+    private var expectedTerminations: Set<ObjectIdentifier> = []
 
     var mcpURL: () -> URL? = { nil }
     var apiKey: () -> String = { "" }
     var phoneContext: () -> String = { "" }
     var model: () -> String? = { nil }
+    var executableURL: () -> URL? = { AgentChat.claudeExecutable }
+    var workDirectoryOverride: URL?
 
     private var sessionID: UUID?
     private var process: Process?
@@ -64,15 +67,21 @@ final class AgentChat: ObservableObject {
         paused = false
         pendingResume = false
         if running { cancelInput(activePhoneID, .stop) }
-        process?.terminate()
+        terminateForControlChange()
         append(.status, "Stopped. You can continue in this conversation.")
     }
 
     func pauseForControlChange() {
-        guard running, !stopping else { return }
+        guard running, !stopping, !paused else { return }
         paused = true
-        process?.terminate()
+        terminateForControlChange()
         append(.status, "Paused for manual control. Resume will inspect the current screen before continuing.")
+    }
+
+    private func terminateForControlChange() {
+        guard let process, process.isRunning else { return }
+        expectedTerminations.insert(ObjectIdentifier(process))
+        process.terminate()
     }
 
     func resume() {
@@ -87,7 +96,7 @@ final class AgentChat: ObservableObject {
     func send(_ text: String) {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !prompt.isEmpty, !running else { return }
-        guard let claude = Self.claudeExecutable else {
+        guard let claude = executableURL() else {
             append(.error, "Claude Code is not installed. Install it from claude.ai/code, then try again.")
             return
         }
@@ -103,7 +112,8 @@ final class AgentChat: ObservableObject {
         paused = false
         append(.user, prompt)
 
-        let configURL = Self.workDirectory.appendingPathComponent("mcp.json")
+        let directory = workDirectoryOverride ?? Self.workDirectory
+        let configURL = directory.appendingPathComponent("mcp.json")
         let config: [String: Any] = ["mcpServers": ["taplyne": [
             "type": "http", "url": url.absoluteString, "headers": ["X-API-Key": apiKey()]
         ]]]
@@ -137,7 +147,7 @@ final class AgentChat: ObservableObject {
         let process = Process()
         process.executableURL = claude
         process.arguments = arguments
-        process.currentDirectoryURL = Self.workDirectory
+        process.currentDirectoryURL = directory
         let out = Pipe()
         let err = Pipe()
         process.standardOutput = out
@@ -160,9 +170,10 @@ final class AgentChat: ObservableObject {
             let reason = finished.terminationReason
             Task { @MainActor in
                 guard let self, self.process === finished else { return }
+                let expected = self.expectedTerminations.remove(ObjectIdentifier(finished)) != nil
                 self.running = false
                 self.process = nil
-                if status != 0, reason == .exit {
+                if status != 0, reason == .exit, !expected {
                     let tail = errorText.value.split(separator: "\n").suffix(3).joined(separator: "\n")
                     self.append(.error, tail.isEmpty ? "Claude Code exited with status \(status)." : tail)
                 }
@@ -207,7 +218,7 @@ final class AgentChat: ObservableObject {
             for block in content(of: event) where block["type"] as? String == "tool_result" {
                 let parts = block["content"] as? [[String: Any]] ?? []
                 if block["is_error"] as? Bool == true {
-                    let text = parts.compactMap { $0["text"] as? String }.joined(separator: " ")
+                    let text = Self.toolResultText(block)
                     append(.error, text.isEmpty ? "The action failed." : text)
                 }
                 for part in parts where part["type"] as? String == "image" {
@@ -226,6 +237,12 @@ final class AgentChat: ObservableObject {
         default:
             break
         }
+    }
+
+    static func toolResultText(_ block: [String: Any]) -> String {
+        if let text = block["content"] as? String { return text }
+        return (block["content"] as? [[String: Any]] ?? [])
+            .compactMap { $0["text"] as? String }.joined(separator: " ")
     }
 
     private func content(of event: [String: Any]) -> [[String: Any]] {

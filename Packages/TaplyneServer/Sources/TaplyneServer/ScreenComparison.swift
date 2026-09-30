@@ -3,6 +3,10 @@ import CoreGraphics
 /// Small local fingerprints ignore compression noise; callers also compare OCR and control revisions.
 public enum ScreenComparison {
     public static func stableForInput(_ before: CGImage, _ after: CGImage, ignoring points: [CGPoint]) -> Bool {
+        stableForInput(before, after, ignoring: points, ignoringRegions: [])
+    }
+
+    public static func stableForInput(_ before: CGImage, _ after: CGImage, ignoring points: [CGPoint], ignoringRegions: [CGRect]) -> Bool {
         guard before.width == after.width, before.height == after.height,
               let a = grayscale(before), let b = grayscale(after) else { return false }
         let width = 128
@@ -12,6 +16,7 @@ public enum ScreenComparison {
             let p = CGPoint(x: Double(i % width) / Double(width) * Double(before.width),
                             y: Double(i / width) / Double(height) * Double(before.height))
             if points.contains(where: { hypot(p.x - $0.x, p.y - $0.y) < 55 }) { continue }
+            if ignoringRegions.contains(where: { $0.contains(p) }) { continue }
             compared += 1
             if abs(Int(a[i]) - Int(b[i])) > 22 { changed += 1 }
         }
@@ -25,13 +30,17 @@ public enum ScreenComparison {
         return Double(changes) / Double(a.count) > 0.008
     }
 
-    public static func targetChanged(_ before: CGImage, _ after: CGImage, around point: CGPoint, ignoring points: [CGPoint] = []) -> Bool {
+    public static func targetChanged(_ before: CGImage, _ after: CGImage, around point: CGPoint, ignoring points: [CGPoint] = [], ignoringRegions: [CGRect] = []) -> Bool {
         guard before.width == after.width, before.height == after.height else { return true }
         let rect = CGRect(x: point.x - 70, y: point.y - 70, width: 140, height: 140)
             .intersection(CGRect(x: 0, y: 0, width: before.width, height: before.height)).integral
         guard let a = before.cropping(to: rect), let b = after.cropping(to: rect) else { return true }
-        if points.isEmpty { return changed(a, b) }
-        return !stableForInput(a, b, ignoring: points.map { CGPoint(x: $0.x - rect.minX, y: $0.y - rect.minY) })
+        // A recognized hover can cover the entire small target crop. The caller
+        // still checks all pixels outside that bounded hover on the full screen.
+        if ignoringRegions.contains(where: { $0.contains(rect) }) { return false }
+        if points.isEmpty && ignoringRegions.isEmpty { return changed(a, b) }
+        return !stableForInput(a, b, ignoring: points.map { CGPoint(x: $0.x - rect.minX, y: $0.y - rect.minY) },
+                              ignoringRegions: ignoringRegions.map { $0.offsetBy(dx: -rect.minX, dy: -rect.minY) })
     }
 
     public static func regionChanged(_ before: CGImage, _ after: CGImage, region: CGRect, ignoring points: [CGPoint]) -> Bool {

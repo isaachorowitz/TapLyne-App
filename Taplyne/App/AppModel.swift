@@ -201,6 +201,9 @@ final class AppModel: ObservableObject {
     func connectBluetooth(_ phone: Phone) async {
         do {
             let address = try await registry.tool.bluetoothAddress(udid: phone.udid)
+            // The HID channels alone do not make mouse input usable on iOS.
+            // Enable the pointer as part of the existing phone setup action.
+            try await registry.tool.setAssistiveTouch(udid: phone.udid, enabled: true)
             guard await bluetooth.prepare(address: address) else { return }
             phone.config.bluetoothAddress = address
             phone.lastError = nil

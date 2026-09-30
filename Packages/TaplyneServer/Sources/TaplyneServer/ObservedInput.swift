@@ -21,8 +21,13 @@ public struct ActionReference: @unchecked Sendable {
               Date().timeIntervalSince(image.capturedAt) <= 30,
               Date().timeIntervalSince(current.capturedAt) <= 1,
               image.width == current.width, image.height == current.height,
-              control == currentControl, !ScreenComparison.changed(image.image, current.image)
+              control == currentControl
         else { throw PhoneServiceError.failed("STALE_FRAME: The observed screen is no longer current. Describe it again before acting.") }
+        // Home is a global button. Animation or video content cannot change its
+        // destination, and must not prevent leaving the current app.
+        if action?.requiresFrameReference != false, ScreenComparison.changed(image.image, current.image) {
+            throw PhoneServiceError.failed("STALE_FRAME: The observed screen is no longer current. Describe it again before acting.")
+        }
         if let action, let point = action.startPoint, ScreenComparison.targetChanged(image.image, current.image, around: point) {
             throw PhoneServiceError.failed("STALE_FRAME: The target changed after observation. Describe it again before acting.")
         }
@@ -39,6 +44,7 @@ public extension PhoneAction {
     }
     var requiresFrameReference: Bool {
         switch self {
+        case .navigate(.home): false
         case .tap, .doubleTap, .tripleTap, .tapAndHold, .flick, .drag, .holdAndDrag, .navigate, .type, .setText, .keypress: true
         default: false
         }
@@ -59,10 +65,11 @@ public extension PhoneService {
 
 /// Delivery is unknown when the transport cannot confirm whether a report reached the phone.
 public enum InputDelivery: String, Sendable { case notDelivered = "not_delivered", delivered, unknown }
-public struct InputFailure: Error, Sendable {
+public struct InputFailure: LocalizedError, Sendable {
     public var delivery: InputDelivery
     public var completedSteps: Int
     public var message: String
+    public var errorDescription: String? { message }
     public init(_ error: Error, delivery: InputDelivery, completedSteps: Int = 0) {
         self.delivery = delivery; self.completedSteps = completedSteps
         if let failure = error as? InputFailure {

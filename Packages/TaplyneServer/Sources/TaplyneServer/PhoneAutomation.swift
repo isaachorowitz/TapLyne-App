@@ -15,7 +15,7 @@ public final class PhoneAutomation: Sendable {
         try Task.checkCancellation()
         let state = try await service.controlState(phoneID: phoneID)
         let image = try await freshImage(phoneID: phoneID)
-        let screen = try await recognize(image)
+        let screen = ScreenTapTarget.annotate(try await recognize(image), image: image.image)
         guard state == (try await service.controlState(phoneID: phoneID)) else {
             throw PhoneServiceError.failed("CONTROL_CHANGED: Input occurred while describing the screen. Observe again.")
         }
@@ -79,7 +79,8 @@ public final class PhoneAutomation: Sendable {
             element = found
         } else if let label { element = try observation.screen.uniqueMatch(label, exact: exact) }
         else { throw PhoneServiceError.invalidArgument("Provide label or element_id.") }
-        return try await act(phoneID: phoneID, action: .tap(x: Int(element.bounds.cgRect.midX), y: Int(element.bounds.cgRect.midY)),
+        let target = (element.tapTarget ?? element.bounds).cgRect
+        return try await act(phoneID: phoneID, action: .tap(x: Int(target.midX), y: Int(target.midY)),
                              frameID: frameID, expectation: expectation)
     }
 
