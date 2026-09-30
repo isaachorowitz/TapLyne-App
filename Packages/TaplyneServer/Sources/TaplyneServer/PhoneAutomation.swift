@@ -50,15 +50,19 @@ public final class PhoneAutomation: Sendable {
         await observer.invalidate(phoneID)
         do {
             let completed = Date()
-            var result = try await observeAfter(phoneID, after: completed)
+            let deadline = completed.addingTimeInterval(3)
+            var (result, settled) = try await observeAfter(phoneID, after: completed, deadline: deadline)
             try await checkGeneration(phoneID, observation.reference.control.generation)
-            let deadline = Date().addingTimeInterval(3)
             repeat {
                 result.verification = ActionVerification.evaluate(expectation, before: observation.reference.image,
                     after: result.image, description: result.screen, receipt: receipt, beforeDescription: observation.screen)
+                if !settled, receipt.textVerification?.status != .failed {
+                    result.verification = Verification(.unverified, method: "screen_moving",
+                        detail: "Input was delivered once, but the screen is still moving. Wait for the layout to settle before continuing; do not repeat the input.")
+                }
                 if expectation.isEmpty || result.verification.status != .failed || Date() >= deadline { break }
-                try await Task.sleep(for: .milliseconds(200))
-                result = try await observeAfter(phoneID, after: result.image.capturedAt)
+                (result, settled) = try await observeAfter(phoneID, after: result.image.capturedAt, deadline: deadline,
+                    stableReference: settled ? result.image : nil)
                 try await checkGeneration(phoneID, observation.reference.control.generation)
             } while true
             result.inputDelivered = true; result.completedSteps = 1
@@ -70,8 +74,8 @@ public final class PhoneAutomation: Sendable {
 
     public func tapLabel(phoneID: String, label: String? = nil, elementID: String? = nil, frameID: String,
                          exact: Bool = true, expectation: ActionExpectation = ActionExpectation()) async throws -> ObservedAction {
-        let observation = try await observer.reference(frameID, phoneID: phoneID)
-        let element: ScreenElement
+        var observation = try await observer.reference(frameID, phoneID: phoneID)
+        var element: ScreenElement
         if let elementID {
             guard let found = observation.screen.elements.first(where: { $0.id == elementID }), found.confidence >= 0.45 else {
                 throw PhoneServiceError.invalidArgument("element_id must be a confident element from this frame.")
@@ -79,9 +83,28 @@ public final class PhoneAutomation: Sendable {
             element = found
         } else if let label { element = try observation.screen.uniqueMatch(label, exact: exact) }
         else { throw PhoneServiceError.invalidArgument("Provide label or element_id.") }
+        let image = try await freshImage(phoneID: phoneID)
+        try observation.reference.validateState(current: image, control: try await service.controlState(phoneID: phoneID))
+        let oldTarget = (element.tapTarget ?? element.bounds).cgRect
+        if ScreenComparison.changed(observation.reference.image.image, image.image) ||
+            ScreenComparison.targetChanged(observation.reference.image.image, image.image, around: CGPoint(x: oldTarget.midX, y: oldTarget.midY)) {
+            // A label can be resolved again on the same page. A coordinate cannot.
+            // Never refresh consumed frames, changed control revisions or ambiguous labels.
+            guard observation.screen.matches(element.text).count == 1 else {
+                throw PhoneServiceError.failed("STALE_FRAME: The selected label is ambiguous after a layout change. Describe it again.")
+            }
+            let fresh = try await observe(phoneID: phoneID)
+            let refreshed = try await observer.reference(fresh.screen.frameID, phoneID: phoneID)
+            guard refreshed.reference.control == observation.reference.control,
+                  LabelRetarget.samePage(observation.screen, fresh.screen) else {
+                throw PhoneServiceError.failed("STALE_FRAME: The page changed after observation. Describe it again before acting.")
+            }
+            element = try fresh.screen.uniqueMatch(element.text)
+            observation = refreshed
+        }
         let target = (element.tapTarget ?? element.bounds).cgRect
         return try await act(phoneID: phoneID, action: .tap(x: Int(target.midX), y: Int(target.midY)),
-                             frameID: frameID, expectation: expectation)
+                             frameID: observation.screen.frameID, expectation: expectation)
     }
 
     public func scrollTo(phoneID: String, label: String, direction: Direction = .up, maxScrolls: Int = 6,
@@ -134,9 +157,29 @@ public final class PhoneAutomation: Sendable {
         return result
     }
 
-    private func observeAfter(_ phoneID: String, after: Date) async throws -> ObservedAction {
-        _ = try await freshImage(phoneID: phoneID, after: after)
-        return try await observe(phoneID: phoneID)
+    private func observeAfter(_ phoneID: String, after: Date, deadline: Date,
+                              stableReference: ScreenImage? = nil) async throws -> (ObservedAction, Bool) {
+        var previous = try await freshImage(phoneID: phoneID, after: after)
+        var quietSince = previous.capturedAt
+        if let stableReference, !ScreenComparison.changed(stableReference.image, previous.image) {
+            quietSince = stableReference.capturedAt.addingTimeInterval(-0.18)
+        }
+        while true {
+            try await Task.sleep(for: .milliseconds(60))
+            let current = try await freshImage(phoneID: phoneID, after: previous.capturedAt)
+            if ScreenComparison.changed(previous.image, current.image) { quietSince = current.capturedAt }
+            let quiet = current.capturedAt.timeIntervalSince(quietSince) >= 0.18
+            previous = current
+            if quiet || Date() >= deadline {
+                let result = try await observe(phoneID: phoneID)
+                // OCR takes time too. Confirm that its reference still represents
+                // the current layout before returning it to the agent.
+                let latest = try await freshImage(phoneID: phoneID, after: result.image.capturedAt)
+                if quiet && !ScreenComparison.changed(result.image.image, latest.image) { return (result, true) }
+                if Date() >= deadline { return (result, false) }
+                previous = latest; quietSince = latest.capturedAt
+            }
+        }
     }
 
     private func freshImage(phoneID: String, after: Date = .distantPast) async throws -> ScreenImage {

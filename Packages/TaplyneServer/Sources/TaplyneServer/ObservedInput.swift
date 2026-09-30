@@ -16,13 +16,7 @@ public struct ActionReference: @unchecked Sendable {
     }
 
     public func validate(current: ScreenImage, control currentControl: PhoneControlState, action: PhoneAction? = nil) throws {
-        guard currentControl.mode == .automatic,
-              Date().timeIntervalSince(observedAt) <= 30,
-              Date().timeIntervalSince(image.capturedAt) <= 30,
-              Date().timeIntervalSince(current.capturedAt) <= 1,
-              image.width == current.width, image.height == current.height,
-              control == currentControl
-        else { throw PhoneServiceError.failed("STALE_FRAME: The observed screen is no longer current. Describe it again before acting.") }
+        try validateState(current: current, control: currentControl)
         // Home is a global button. Animation or video content cannot change its
         // destination, and must not prevent leaving the current app.
         if action?.requiresFrameReference != false, ScreenComparison.changed(image.image, current.image) {
@@ -31,6 +25,16 @@ public struct ActionReference: @unchecked Sendable {
         if let action, let point = action.startPoint, ScreenComparison.targetChanged(image.image, current.image, around: point) {
             throw PhoneServiceError.failed("STALE_FRAME: The target changed after observation. Describe it again before acting.")
         }
+    }
+
+    func validateState(current: ScreenImage, control currentControl: PhoneControlState) throws {
+        guard currentControl.mode == .automatic,
+              Date().timeIntervalSince(observedAt) <= 30,
+              Date().timeIntervalSince(image.capturedAt) <= 30,
+              Date().timeIntervalSince(current.capturedAt) <= 1,
+              image.width == current.width, image.height == current.height,
+              control == currentControl
+        else { throw PhoneServiceError.failed("STALE_FRAME: The observed screen is no longer current. Describe it again before acting.") }
     }
 }
 

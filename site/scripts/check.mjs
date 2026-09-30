@@ -13,11 +13,13 @@ for (const match of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   if (ref.startsWith('#') && ref.length > 1) assert(ids.includes(ref.slice(1)), `Missing anchor ${ref}`);
   if (ref.startsWith('/')) await access(path.join(root, ref.slice(1)));
 }
-assert.equal((html.match(/releases\/latest\/download\/Taplyne\.dmg/g) || []).length, 3);
+assert.equal((html.match(/releases\/latest\/download\/Taplyne\.dmg/g) || []).length, 1);
+assert(html.includes('href="https://github.com/isaachorowitz/taplyne-mac"'), 'Missing GitHub link');
+assert(!/<script>|\son[a-z]+="/.test(html), 'Inline script or handler breaks the CSP');
 const css = await readFile(path.join(root, 'style.css'), 'utf8');
 for (const match of css.matchAll(/url\(['"]?(\/[^)'"\s]+)['"]?\)/g)) await access(path.join(root, match[1].slice(1)));
 assert(css.includes('prefers-reduced-motion'));
 assert(html.includes('Illustrated demo'));
+assert(html.includes('class="scr scr-list is-active"'), 'No static end state for reduced motion or no JavaScript');
 await access(path.join(root, 'fonts/DM-Sans-OFL.txt'));
-await access(path.join(root, 'fonts/Instrument-Serif-OFL.txt'));
 console.log('PASS: asset paths, fonts, anchors, single heading, download links and reduced-motion styling');

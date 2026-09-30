@@ -2,138 +2,185 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f4f1ea">
-  <title>Taplyne — Give your AI a real iPhone.</title>
-  <meta name="description" content="See, tap and type on a real iPhone from your Mac. A free, open-source Mac app with local USB capture, Bluetooth control, and tools for your AI agent.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <meta name="color-scheme" content="dark">
+  <title>TapLyne · Give your AI a real iPhone</title>
+  <meta name="description" content="TapLyne is a free, open-source Mac app that lets an AI agent see, tap, scroll and type on the iPhone plugged into your Mac. Screen in over USB, taps out over Bluetooth, nothing installed on the phone.">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Taplyne — Your AI. Your iPhone. Finally, together.">
-  <meta property="og:description" content="An open-source bridge between your Mac, your AI, and your real iPhone. Download for Mac.">
+  <meta property="og:title" content="TapLyne · Give your AI a real iPhone">
+  <meta property="og:description" content="A free, open-source Mac app that lets an AI agent see, tap, scroll and type on your real iPhone. Download for Mac.">
+  <meta property="og:image" content="/icon.png">
   <meta name="twitter:card" content="summary">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='18' fill='%232b302b'/%3E%3Cpath d='M17 18h30v7H36v23h-8V25H17z' fill='%23f4f1ea'/%3E%3Ccircle cx='47' cy='46' r='5' fill='%23ee895b'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="apple-touch-icon" href="/icon.png">
   <link rel="preload" href="/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/style.css">
   <script src="/demo.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
-  <header class="site-header wrap">
-    <a class="brand" href="#" aria-label="Taplyne home"><span class="brand-mark" aria-hidden="true">T<span></span></span>taplyne</a>
-    <nav aria-label="Main navigation">
-      <a class="nav-how" href="#how-it-works">How it works</a>
-      <a class="nav-source" href="https://github.com/isaachorowitz/taplyne-mac">GitHub <span aria-hidden="true">↗</span></a>
-      <a class="nav-download" href="https://github.com/isaachorowitz/taplyne-mac/releases/latest/download/Taplyne.dmg">Download <span aria-hidden="true">↓</span></a>
-    </nav>
-  </header>
 
-  <main id="main">
-    <section class="hero wrap" aria-labelledby="hero-title">
-      <div class="hero-copy">
-        <p class="eyebrow"><span class="live-dot"></span> REAL PHONE. NEW POSSIBILITIES.</p>
-        <h1 id="hero-title">Your AI.<br>Your iPhone.<br><em>Finally, together.</em></h1>
-        <p class="hero-description">Give your AI a pair of hands.<br>See, tap and type on your real iPhone.<br>All from one little Mac app.</p>
-        <div class="hero-actions">
-          <a class="button button-dark" href="https://github.com/isaachorowitz/taplyne-mac/releases/latest/download/Taplyne.dmg"><span class="apple" aria-hidden="true">●</span> Download for Mac <span class="button-arrow" aria-hidden="true">↓</span></a>
-          <a class="source-link" href="https://github.com/isaachorowitz/taplyne-mac">Explore the code <span aria-hidden="true">↗</span></a>
+  <div class="backdrop" aria-hidden="true">
+    <div class="backdrop-glow"></div>
+    <div class="backdrop-horizon"></div>
+  </div>
+
+  <div class="page">
+    <header class="bar">
+      <a class="brand" href="/" aria-label="TapLyne home"><img src="/logo.png" width="28" height="28" alt="">TapLyne</a>
+      <nav class="bar-nav" aria-label="Main">
+        <a class="bar-link" href="https://github.com/isaachorowitz/taplyne-mac#readme">Docs</a>
+        <a class="bar-link" href="https://github.com/isaachorowitz/taplyne-mac/releases">Releases</a>
+        <a class="bar-gh" href="https://github.com/isaachorowitz/taplyne-mac" aria-label="TapLyne on GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span>GitHub</span></a>
+      </nav>
+    </header>
+
+    <main id="main" class="hero">
+      <div class="copy">
+        <h1 class="headline"><span class="line">Give your AI</span> <span class="line">a real <span class="headline-accent">iPhone</span>.</span></h1>
+        <p class="lede">TapLyne lets an AI agent <strong>see, tap, scroll and type</strong> on the iPhone plugged into your Mac. The screen comes in over USB. The taps go out over Bluetooth. Nothing gets installed on the phone.</p>
+        <div class="actions">
+          <a class="btn btn-primary" href="https://github.com/isaachorowitz/taplyne-mac/releases/latest/download/Taplyne.dmg">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16.5h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Download for Mac</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/isaachorowitz/taplyne-mac">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+            <span>View on GitHub</span>
+          </a>
         </div>
-        <p class="download-note">Free & open source <span>·</span> macOS 15+ <span>·</span> Early release</p>
+        <p class="meta"><span>Free and open source. macOS 15 or later, Apple silicon and Intel.</span> <span>Works with Claude Code, any MCP client, or REST.</span></p>
       </div>
 
-      <div class="demo-stage" aria-label="Interactive illustration of Taplyne. This is a simulated demo, not a connected phone.">
-        <div class="stage-grid" aria-hidden="true"></div>
-        <div class="orbit orbit-one" aria-hidden="true"></div>
-        <div class="orbit orbit-two" aria-hidden="true"></div>
-        <div class="connection-tag"><span class="live-dot"></span> Your iPhone, connected</div>
-        <div class="phone">
-          <div class="phone-button" aria-hidden="true"></div>
-          <div class="phone-display">
-            <div class="phone-status"><span>9:41</span><span aria-hidden="true">▮▮▮ <span class="battery"></span></span></div>
-            <div class="dynamic-island" aria-hidden="true"></div>
-            <div class="phone-app" id="phone-app">
-              <div class="app-nav"><span>‹ Lists</span><span>•••</span></div>
-              <div class="app-icon" aria-hidden="true"><i></i><i></i><i></i></div>
-              <p class="phone-eyebrow" id="phone-eyebrow">A LITTLE LESS TO REMEMBER</p>
-              <h2 id="phone-title">Good things<br>to get done.</h2>
-              <div class="phone-items" id="phone-items">
-                <div class="phone-item"><span class="check-circle checked"></span><span class="item-done">Make a little space</span></div>
-                <div class="phone-item"><span class="check-circle"></span><span>Pick up coffee</span></div>
-                <div class="phone-item"><span class="check-circle"></span><span>Plan the weekend</span></div>
-                <div class="phone-item demo-added"><span class="check-circle"></span><span>Buy flowers 🌷</span><span class="tiny-sparkle">✦</span></div>
-              </div>
-              <div class="phone-footer"><span>⊕ New Reminder</span></div>
+      <figure class="stage" id="stage" data-flow="idle" aria-label="Illustrated demo of TapLyne: an AI agent on the Mac opens Settings and then General on a connected iPhone. This is an animation, not a connected phone.">
+        <div class="stage-box">
+          <svg class="wires wires-wide" viewBox="0 0 1000 840" aria-hidden="true">
+            <path id="bt-wide" class="wire-bt" d="M452 262 C 505 120, 590 150, 618 292"/>
+            <path class="wire-usb-shell" d="M785 722 C 785 840, 500 800, 452 500"/>
+            <path id="usb-wide" class="wire-usb" d="M785 722 C 785 840, 500 800, 452 500"/>
+            <g class="packets packets-usb">
+              <rect x="-9" y="-6" width="18" height="12" rx="3"><animateMotion dur="2.6s" repeatCount="indefinite" rotate="auto"><mpath href="#usb-wide"/></animateMotion></rect>
+              <rect x="-9" y="-6" width="18" height="12" rx="3"><animateMotion dur="2.6s" begin="-0.87s" repeatCount="indefinite" rotate="auto"><mpath href="#usb-wide"/></animateMotion></rect>
+              <rect x="-9" y="-6" width="18" height="12" rx="3"><animateMotion dur="2.6s" begin="-1.73s" repeatCount="indefinite" rotate="auto"><mpath href="#usb-wide"/></animateMotion></rect>
+            </g>
+            <g class="packets packets-bt">
+              <circle r="5"><animateMotion dur="1.9s" repeatCount="indefinite"><mpath href="#bt-wide"/></animateMotion></circle>
+              <circle r="5"><animateMotion dur="1.9s" begin="-0.95s" repeatCount="indefinite"><mpath href="#bt-wide"/></animateMotion></circle>
+            </g>
+          </svg>
+          <svg class="wires wires-narrow" viewBox="0 0 1000 1000" aria-hidden="true">
+            <path id="bt-narrow" class="wire-bt" d="M190 1000 C 90 820, 110 560, 286 470"/>
+            <path class="wire-usb-shell" d="M500 896 C 500 950, 690 940, 720 1000"/>
+            <path id="usb-narrow" class="wire-usb" d="M500 896 C 500 950, 690 940, 720 1000"/>
+            <g class="packets packets-usb">
+              <rect x="-11" y="-7" width="22" height="14" rx="3"><animateMotion dur="1.4s" repeatCount="indefinite" rotate="auto"><mpath href="#usb-narrow"/></animateMotion></rect>
+              <rect x="-11" y="-7" width="22" height="14" rx="3"><animateMotion dur="1.4s" begin="-0.7s" repeatCount="indefinite" rotate="auto"><mpath href="#usb-narrow"/></animateMotion></rect>
+            </g>
+            <g class="packets packets-bt">
+              <circle r="7"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#bt-narrow"/></animateMotion></circle>
+              <circle r="7"><animateMotion dur="2.2s" begin="-1.1s" repeatCount="indefinite"><mpath href="#bt-narrow"/></animateMotion></circle>
+            </g>
+          </svg>
+
+          <p class="wire-label wire-label-bt"><b>Bluetooth</b><span>Taps and keys to the iPhone</span></p>
+          <p class="wire-label wire-label-usb"><b>USB</b><span>Live screen to the Mac</span></p>
+
+          <div class="console">
+            <div class="console-head">
+              <span class="console-title">Agent</span>
+              <span class="console-via">TapLyne MCP</span>
             </div>
-            <div class="home-indicator" aria-hidden="true"></div>
+            <p class="console-prompt"><span class="console-you">You</span><span id="prompt">Open Settings and show me General.</span></p>
+            <ol class="console-log">
+              <li class="step" data-step="1" data-state="ok"><span class="step-icon" aria-hidden="true"></span><span class="step-body"><code>list_phones</code><span class="step-res" id="res-1">iPhone · online · unlocked</span></span></li>
+              <li class="step" data-step="2" data-state="ok"><span class="step-icon" aria-hidden="true"></span><span class="step-body"><code>describe_screen</code><span class="step-res" id="res-2">frame f_3a9c · 9 labels</span></span></li>
+              <li class="step" data-step="3" data-state="ok"><span class="step-icon" aria-hidden="true"></span><span class="step-body"><code>tap_label <i>"Settings"</i></code><span class="step-expect">expect “General”</span><span class="step-res" id="res-3">verified · “General” on screen</span></span></li>
+              <li class="step" data-step="4" data-state="ok"><span class="step-icon" aria-hidden="true"></span><span class="step-body"><code>tap_label <i>"General"</i></code><span class="step-expect">expect “About”</span><span class="step-res" id="res-4">verified · “About” on screen</span></span></li>
+            </ol>
+            <p class="console-reply" id="reply" data-show="true">General is open on your iPhone.</p>
+            <div class="console-controls">
+              <button type="button" class="ctl" id="ctl-pause" aria-pressed="false">Pause</button>
+              <button type="button" class="ctl" id="ctl-take" aria-pressed="false">Take over</button>
+              <span class="ctl-note" id="ctl-note" role="status">You can stop it any time.</span>
+            </div>
+          </div>
+
+          <div class="phone" id="phone">
+            <div class="phone-frame">
+              <div class="phone-screen" id="screen" aria-hidden="true">
+                <div class="ios-status"><span>9:41</span><span class="ios-status-icons"><i class="sig"></i><i class="bat"></i></span></div>
+                <div class="ios-island"></div>
+
+                <section class="scr scr-home" data-screen="home">
+                  <div class="widget"><span class="widget-day">WEDNESDAY</span><span class="widget-date">30</span><span class="widget-note">No events today</span></div>
+                  <div class="apps">
+                    <div class="app" data-label="Calendar"><span class="app-ic ic-cal"><b>30</b></span><span class="app-lb">Calendar</span></div>
+                    <div class="app" data-label="Photos"><span class="app-ic ic-photos"><i></i></span><span class="app-lb">Photos</span></div>
+                    <div class="app" data-label="Camera"><span class="app-ic ic-camera"><i></i></span><span class="app-lb">Camera</span></div>
+                    <div class="app" data-label="Mail"><span class="app-ic ic-mail"><i></i></span><span class="app-lb">Mail</span></div>
+                    <div class="app" data-label="Notes"><span class="app-ic ic-notes"><i></i></span><span class="app-lb">Notes</span></div>
+                    <div class="app" data-label="Weather"><span class="app-ic ic-weather"><i></i></span><span class="app-lb">Weather</span></div>
+                    <div class="app" data-label="Maps"><span class="app-ic ic-maps"><i></i></span><span class="app-lb">Maps</span></div>
+                    <div class="app" data-label="Settings" id="t-settings"><span class="app-ic ic-settings"><svg viewBox="0 0 24 24"><path fill="currentColor" d="M13.9 2.5l.5 2.3c.6.2 1.1.5 1.6.9l2.2-.8 1.9 3.3-1.7 1.6a7 7 0 0 1 0 1.9l1.7 1.6-1.9 3.3-2.2-.8c-.5.4-1 .7-1.6.9l-.5 2.3h-3.8l-.5-2.3c-.6-.2-1.1-.5-1.6-.9l-2.2.8-1.9-3.3 1.7-1.6a7 7 0 0 1 0-1.9L3.9 8.2l1.9-3.3 2.2.8c.5-.4 1-.7 1.6-.9l.5-2.3h3.8ZM12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8Z"/></svg></span><span class="app-lb">Settings</span></div>
+                  </div>
+                  <div class="dock"><span class="app-ic ic-phone"><i></i></span><span class="app-ic ic-safari"><i></i></span><span class="app-ic ic-msg"><i></i></span><span class="app-ic ic-music"><i></i></span></div>
+                </section>
+
+                <section class="scr scr-list" data-screen="settings">
+                  <p class="list-title">Settings</p>
+                  <p class="list-search">Search</p>
+                  <div class="list-group">
+                    <p class="row"><i class="row-ic c-blue"></i><span>Wi‑Fi</span><em>Home</em></p>
+                    <p class="row"><i class="row-ic c-blue"></i><span>Bluetooth</span><em>On</em></p>
+                    <p class="row"><i class="row-ic c-green"></i><span>Cellular</span></p>
+                  </div>
+                  <div class="list-group">
+                    <p class="row" data-label="General" id="t-general"><i class="row-ic c-gray"></i><span>General</span></p>
+                    <p class="row"><i class="row-ic c-blue"></i><span>Accessibility</span></p>
+                    <p class="row"><i class="row-ic c-blue"></i><span>Display &amp; Brightness</span></p>
+                    <p class="row"><i class="row-ic c-red"></i><span>Notifications</span></p>
+                    <p class="row"><i class="row-ic c-violet"></i><span>Focus</span></p>
+                  </div>
+                </section>
+
+                <section class="scr scr-list is-active" data-screen="general">
+                  <p class="list-back">‹ Settings</p>
+                  <p class="list-title">General</p>
+                  <div class="list-group">
+                    <p class="row" data-label="About" id="t-about"><span>About</span></p>
+                    <p class="row"><span>Software Update</span></p>
+                  </div>
+                  <div class="list-group">
+                    <p class="row"><span>AirDrop</span></p>
+                    <p class="row"><span>AirPlay &amp; Continuity</span></p>
+                  </div>
+                  <div class="list-group">
+                    <p class="row"><span>Keyboard</span></p>
+                    <p class="row"><span>Language &amp; Region</span></p>
+                    <p class="row"><span>Date &amp; Time</span></p>
+                  </div>
+                </section>
+
+                <div class="ocr" id="ocr"></div>
+                <div class="scan" id="scan"></div>
+                <div class="pointer" id="pointer"></div>
+                <div class="ripple" id="ripple"></div>
+                <div class="ios-home"></div>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="pointer" aria-hidden="true"><span></span></div>
-        <div class="agent-card">
-          <div class="agent-card-header"><span class="agent-symbol" aria-hidden="true">✦</span><span>Your AI, a little more capable.</span><span class="agent-dot"></span></div>
-          <p id="demo-request">“Add buy flowers to my reminders.”</p>
-          <div class="agent-result"><span class="result-icon" aria-hidden="true">✓</span><span id="demo-result" role="status" aria-live="polite">Added. A small thing, off your mind.</span></div>
-        </div>
-        <div class="demo-controls" role="group" aria-label="Try an illustrated example">
-          <span class="demo-label">TRY A LITTLE DEMO</span>
-          <div class="demo-buttons">
-            <button type="button" data-demo="reminder" aria-pressed="true">Make a list <span>↗</span></button>
-            <button type="button" data-demo="settings" aria-pressed="false">Find a setting <span>↗</span></button>
-            <button type="button" data-demo="hebrew" aria-pressed="false">Preview Hebrew <span>↗</span></button>
-          </div>
-        </div>
-        <span class="stage-note">Illustrated demo · Your real phone does the real work.</span>
-      </div>
-    </section>
+        <figcaption class="stage-note">Illustrated demo. The real app drives your real phone.</figcaption>
+      </figure>
 
-    <div class="connection-strip wrap" aria-label="Connection requirements">
-      <span>A simple connection.<br><strong>A whole new connection.</strong></span>
-      <div class="connection-path"><span class="path-node">Your Mac</span><span class="path-line"><i></i>USB + Bluetooth<i></i></span><span class="path-node">Your iPhone</span></div>
-      <span class="strip-note">No jailbreak.<br>No app to install on your iPhone.</span>
-    </div>
-
-    <section class="possibilities wrap" aria-labelledby="possibilities-title">
-      <div class="section-heading"><p class="eyebrow">SMALL APP. LONG REACH.</p><h2 id="possibilities-title">The apps you use.<br><em>The help you wanted.</em></h2></div>
-      <div class="feature-row">
-        <article class="feature"><span class="feature-number">01 /</span><div><h3>Let it lend a hand.</h3><p>Connect an MCP agent or use the built-in Claude Code chat. It can read the screen, find a label, scroll, and fill a field.</p></div><span class="feature-glyph" aria-hidden="true">↗</span></article>
-        <article class="feature"><span class="feature-number">02 /</span><div><h3>Keep the reins.</h3><p>Watch every move on a live screen. Pause, take over, and resume from where you are. Your phone stays in your hands.</p></div><span class="feature-glyph feature-glyph-circle" aria-hidden="true">Ⅱ</span></article>
-        <article class="feature"><span class="feature-number">03 /</span><div><h3>Make it your own.</h3><p>Local capture. Bluetooth input. An open-source Mac app with REST and MCP tools. Build on it, inspect it, or just use it.</p></div><span class="feature-glyph feature-glyph-code" aria-hidden="true">{ }</span></article>
-      </div>
-    </section>
-
-    <section class="how-section" id="how-it-works" aria-labelledby="how-title">
-      <div class="wrap how-layout">
-        <div class="how-intro"><p class="eyebrow">LESS CEREMONY. MORE DOING.</p><h2 id="how-title">Plug in.<br>Pair up.<br><em>Possibilities.</em></h2><p>A real iPhone, a data cable,<br>and a Mac on macOS 15 or later.</p><a class="text-link" href="https://github.com/isaachorowitz/taplyne-mac#readme">Read the setup guide <span aria-hidden="true">↗</span></a></div>
-        <ol class="steps">
-          <li><span class="step-index">1</span><div><h3>Make yourself at home.</h3><p>Download Taplyne, move it to Applications, and open it. The setup card walks you through the connection.</p></div></li>
-          <li><span class="step-index">2</span><div><h3>Give your iPhone a way in.</h3><p>Plug in and unlock your iPhone. Allow Camera access for USB capture, then pair Bluetooth and enable AssistiveTouch.</p></div></li>
-          <li><span class="step-index">3</span><div><h3>Give your AI something to do.</h3><p>Calibrate the pointer, connect your agent, and describe a task. Watch what happens, and step in whenever you want.</p></div></li>
-        </ol>
-      </div>
-    </section>
-
-    <section class="questions wrap" aria-labelledby="questions-title">
-      <div><p class="eyebrow">A FEW GOOD QUESTIONS.</p><h2 id="questions-title">Before you<br><em>connect.</em></h2></div>
-      <div class="faq-list">
-        <details><summary>What do I need?<span aria-hidden="true">+</span></summary><p>A Mac on macOS 15+, an unlocked iPhone, and a USB data cable. Taplyne uses AssistiveTouch for Bluetooth control. Device setup also needs pymobiledevice3; the README includes the install command. The built-in agent needs Claude Code and its own login.</p></details>
-        <details><summary>Does my iPhone need Developer Mode?<span aria-hidden="true">+</span></summary><p>The capture and input path is designed to work without Developer Mode: USB screen capture plus a Bluetooth mouse and keyboard. Nothing is installed on the phone. This is an early release, and compatibility needs testing across Mac and iPhone versions.</p></details>
-        <details><summary>Where does my screen go?<span aria-hidden="true">+</span></summary><p>Taplyne captures the screen locally and has no cloud relay or built-in analytics. An AI agent you connect may send screenshots and text to its provider. The built-in chat uses Claude Code. You choose the agent and when it acts.</p></details>
-        <details><summary>Can it type Hebrew and emoji?<span aria-hidden="true">+</span></summary><p>Unicode paste is experimental. It uses Universal Clipboard and requires Handoff and the same Apple Account, but Hebrew and emoji paste failed in our latest phone checks. English keyboard input passed. Taplyne reports uncertain results so you can inspect the field. Hebrew screen recognition uses optional local OCR models.</p></details>
-        <details><summary>Is it really free and open source?<span aria-hidden="true">+</span></summary><p>Yes. Taplyne is licensed under AGPL-3.0-only. You can read, run, and modify the source. Your AI provider may have its own charges. Taplyne is experimental and uses private macOS Bluetooth APIs, so expect device-specific rough edges.</p></details>
-      </div>
-    </section>
-
-    <section class="download-section wrap" aria-labelledby="download-title">
-      <div class="download-decoration" aria-hidden="true"><span></span><span></span><span></span></div>
-      <p class="eyebrow">YOUR PHONE HAS MORE IN IT.</p>
-      <h2 id="download-title">Put a little more<br><em>within reach.</em></h2>
-      <a class="button button-dark" href="https://github.com/isaachorowitz/taplyne-mac/releases/latest/download/Taplyne.dmg">Download for Mac <span class="button-arrow" aria-hidden="true">↓</span></a>
-      <p class="download-note">Free & open source <span>·</span> macOS 15+ <span>·</span> Early release</p>
-      <a class="text-link" href="https://github.com/isaachorowitz/taplyne-mac/releases">Release notes & other downloads <span aria-hidden="true">↗</span></a>
-    </section>
-  </main>
-
-  <footer class="site-footer wrap">
-    <a class="brand" href="#" aria-label="Taplyne home"><span class="brand-mark" aria-hidden="true">T<span></span></span>taplyne</a>
-    <p>A little bridge. A lot of possibility.</p>
-    <div><a href="https://github.com/isaachorowitz/taplyne-mac">Source <span aria-hidden="true">↗</span></a><a href="https://github.com/isaachorowitz/taplyne-mac/blob/main/LICENSE">AGPL-3.0</a></div>
-  </footer>
+      <ol class="rail" aria-label="How it connects">
+        <li><b>USB carries the screen.</b><span>Captured locally on your Mac.</span></li>
+        <li><b>Bluetooth carries the taps.</b><span>AssistiveTouch turns them into touches.</span></li>
+        <li><b>Nothing on the iPhone.</b><span>No app, no jailbreak.</span></li>
+        <li><b>You stay in charge.</b><span>Pause or take over any time.</span></li>
+      </ol>
+    </main>
+  </div>
 </body>
 </html>

@@ -15,6 +15,7 @@ final class FakePhoneService: PhoneService, @unchecked Sendable {
     private var _liveStopped = false
     private var _state = PhoneControlState()
     private var _image: CGImage?
+    private var _afterInputImages: [CGImage] = []
     var textVerificationStatus: VerificationStatus = .unverified
     var pauseAfterInput = false
     var captureFailsAfterInput = false
@@ -64,8 +65,14 @@ final class FakePhoneService: PhoneService, @unchecked Sendable {
 
     func screenshot(phoneID: String) async throws -> ScreenImage {
         if captureFailsAfterInput && !actions.isEmpty { throw PhoneServiceError.timeout }
-        return ScreenImage(image: lock.withLock { _image } ?? Self.makeImage(), capturedAt: Date())
+        let image = lock.withLock { () -> CGImage? in
+            if !_actions.isEmpty && !_afterInputImages.isEmpty { _image = _afterInputImages.removeFirst() }
+            return _image
+        }
+        return ScreenImage(image: image ?? Self.makeImage(), capturedAt: Date())
     }
+
+    func setImagesAfterInput(_ images: [CGImage]) { lock.withLock { _afterInputImages = images } }
 
     func setImage(_ image: CGImage) { lock.withLock { _image = image } }
 

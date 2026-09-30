@@ -91,7 +91,9 @@ final class PhoneDriver {
         case let .navigate(command):
             try await navigate(command)
         }
-        try await sleep(ms: profile.settleMs)
+        // Observed actions wait for fresh, settled frames in PhoneAutomation.
+        // Keep the fixed delay only when no screen feedback is available.
+        if frameProvider == nil || isCalibrating { try await sleep(ms: profile.settleMs) }
         return receipt
     }
 
@@ -121,7 +123,9 @@ final class PhoneDriver {
         if let referenceImage {
             try ensureStable(referenceImage, baseline, target: target, ignoring: [])
         }
-        if pointer == nil || profile.anchorEveryMove { try await anchor() }
+        // A successful aim records the actual pointer. Reuse it until a gesture,
+        // takeover, geometry change or failed feedback invalidates tracking.
+        if pointer == nil { try await anchor() }
         var before = try await frameProvider()
         var baselinePointer = oldPointer
         if let motion = PointerLocator.motion(before: baseline.image, after: before.image, origin: pointer ?? .zero, maxBlobSize: 320, expectedTarget: oldPointer) {
@@ -186,12 +190,13 @@ final class PhoneDriver {
         // USB capture can lag HID motion, and an iOS hover continues growing
         // after the cursor arrives. Observe that one move until its shape settles.
         // This never resends motion or a click while waiting for feedback.
-        try await sleep(ms: 200)
         let deadline = Date().addingTimeInterval(1.2)
         var previous: PointerLocator.Blob?
+        var previousCapture = before.capturedAt
         repeat {
             try Task.checkCancellation()
-            if let after = try await frameProvider?(), after.width == before.width, after.height == before.height,
+            if let after = try await frameProvider?(), after.capturedAt > previousCapture,
+               after.width == before.width, after.height == before.height,
                let motion = PointerLocator.motion(before: before.image, after: after.image, origin: origin, maxBlobSize: 320, expectedTarget: target),
                ScreenComparison.stableForInput(before.image, after.image, ignoring: [motion.start.center, motion.end.center],
                    ignoringRegions: [motion.start.bounds, motion.end.bounds].map { $0.insetBy(dx: -16, dy: -16) }) {
@@ -204,6 +209,7 @@ final class PhoneDriver {
                     return after
                 }
                 previous = motion.end
+                previousCapture = after.capturedAt
             } else { previous = nil }
             try await sleep(ms: 80)
         } while Date() < deadline

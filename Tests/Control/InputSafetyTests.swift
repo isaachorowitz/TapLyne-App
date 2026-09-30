@@ -94,6 +94,16 @@ import TaplyneServer
         }
         _ = try await hovering.perform(.tap(x: 514, y: 570))
         precondition(transport.reports.filter { $0.0 == .mouse && $0.1.first == 1 }.count == 1)
+        transport.reports.removeAll()
+        var reusedFrames = 0
+        hovering.frameProvider = {
+            reusedFrames += 1
+            return reusedFrames <= 2 ? pointerFrame(CGPoint(x: 514, y: 570), hover: true) :
+                pointerFrame(CGPoint(x: 514, y: 1000))
+        }
+        _ = try await hovering.perform(.tap(x: 514, y: 1000))
+        precondition(transport.reports.filter { $0.0 == .mouse && $0.1.first == 1 }.count == 1)
+        precondition(!transport.reports.contains { $0.0 == .mouse && $0.1 == MouseReport(dX: -127, dY: -127).data })
         transport.reports.removeAll(); hovering.invalidatePointer(); hoverFrames = 0
         hovering.frameProvider = {
             hoverFrames += 1
@@ -104,6 +114,7 @@ import TaplyneServer
         do { _ = try await hovering.perform(.tap(x: 514, y: 570)); preconditionFailure("Clicked after unrelated content changed") }
         catch let error as InputFailure { precondition(error.delivery == .notDelivered) }
         precondition(!transport.reports.contains { $0.0 == .mouse && $0.1.first == 1 })
+        precondition(transport.reports.contains { $0.0 == .mouse && $0.1 == MouseReport(dX: -127, dY: -127).data })
         transport.reports.removeAll()
         let typing = PhoneDriver(bluetooth: transport, address: "test", profile: profile, screen: CGSize(width: 1320, height: 2868))
         typing.frameProvider = { pointerFrame(CGPoint(x: 54, y: 54)) }
@@ -121,6 +132,6 @@ import TaplyneServer
         precondition(transport.reports.suffix(3).map { $0.0 } == [.mouse, .keyboard, .consumerControl])
         precondition(transport.reports.suffix(3).allSatisfy { $0.1.allSatisfy { $0 == 0 } })
         precondition(driver.pointer == nil)
-        print("PASS: clipboard ownership, missing pointer rejection, complete hover click, unrelated page change rejection, cancellation releases")
+        print("PASS: clipboard ownership, missing pointer rejection, complete hover click, verified pointer reuse, reanchor after invalidation, unrelated page change rejection, cancellation releases")
     }
 }
