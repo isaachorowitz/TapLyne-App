@@ -1,6 +1,6 @@
 # Getting started with Taplyne
 
-[Download Taplyne for Mac](https://github.com/isaachorowitz/TapLyne-App/releases/latest/download/Taplyne.dmg). Taplyne is free and open source. Your chosen AI provider bills its own usage.
+[Download Taplyne for Mac](https://github.com/isaachorowitz/TapLyne-App/releases/download/v0.3.0/Taplyne.dmg). Taplyne is free and open source. Your chosen AI provider bills its own usage.
 
 ## First run over USB
 

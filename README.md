@@ -2,7 +2,7 @@
 
 Give your AI a real iPhone or iPad. Taplyne is a free, open-source Mac app for screen control, agent conversations and live voice, with USB and optional remote modes.
 
-[Download for Mac](https://github.com/isaachorowitz/TapLyne-App/releases/latest/download/Taplyne.dmg) · [Source](https://github.com/isaachorowitz/TapLyne-App) · [Getting started](docs/GETTING-STARTED.md) · [Release notes](https://github.com/isaachorowitz/TapLyne-App/releases)
+[Download for Mac](https://github.com/isaachorowitz/TapLyne-App/releases/download/v0.3.0/Taplyne.dmg) · [Source](https://github.com/isaachorowitz/TapLyne-App) · [Getting started](docs/GETTING-STARTED.md) · [Release notes](https://github.com/isaachorowitz/TapLyne-App/releases)
 
 In USB mode, USB carries the screen and Bluetooth carries mouse and keyboard input. AssistiveTouch turns that input into taps, with nothing installed on the iPhone. Optional remote mode installs a signed XCTest runner and connects through your encrypted relay. Neither mode requires a Taplyne account.
 
