@@ -1,0 +1,5 @@
+{$TAPLYNE_DOMAIN} {
+  reverse_proxy relay:8787 {
+    header_up X-Taplyne-Client-IP {remote_host}
+  }
+}

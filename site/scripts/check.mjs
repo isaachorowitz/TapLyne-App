@@ -14,7 +14,13 @@ for (const match of html.matchAll(/(?:src|href)="([^"]+)"/g)) {
   if (ref.startsWith('/')) await access(path.join(root, ref.slice(1)));
 }
 assert.equal((html.match(/releases\/latest\/download\/Taplyne\.dmg/g) || []).length, 1);
-assert(html.includes('href="https://github.com/isaachorowitz/taplyne-mac"'), 'Missing GitHub link');
+const repository = 'https://github.com/isaachorowitz/TapLyne-App';
+assert(html.includes(`href="${repository}"`), 'Missing canonical GitHub link');
+assert(html.includes(`href="${repository}/blob/main/docs/GETTING-STARTED.md"`), 'Missing setup guide');
+assert(html.includes(`href="${repository}/releases/latest/download/Taplyne.dmg"`), 'Download must use the public repository');
+assert(!html.includes('github.com/isaachorowitz/taplyne-mac'), 'Retired repository link');
+assert(html.includes('Version 0.3.0.'), 'Missing current release version');
+assert(!/arrive[^<]*next download|unplug it and walk away|never submits forms|never presses Submit/i.test(html), 'Outdated availability or safety claim');
 assert(!/<script>|\son[a-z]+="/.test(html), 'Inline script or handler breaks the CSP');
 const css = await readFile(path.join(root, 'style.css'), 'utf8');
 for (const match of css.matchAll(/url\(['"]?(\/[^)'"\s]+)['"]?\)/g)) await access(path.join(root, match[1].slice(1)));

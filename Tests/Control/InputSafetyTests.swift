@@ -132,6 +132,161 @@ import TaplyneServer
         precondition(transport.reports.suffix(3).map { $0.0 } == [.mouse, .keyboard, .consumerControl])
         precondition(transport.reports.suffix(3).allSatisfy { $0.1.allSatisfy { $0 == 0 } })
         precondition(driver.pointer == nil)
+        try await remoteInput()
         print("PASS: clipboard ownership, missing pointer rejection, complete hover click, verified pointer reuse, reanchor after invalidation, unrelated page change rejection, cancellation releases")
     }
+}
+
+
+extension InputSafetyTests {
+    @MainActor static func remoteInput() async throws {
+        precondition(EndpointPolicy.allows(URL(string: "https://example.com")!))
+        precondition(EndpointPolicy.allows(URL(string: "http://192.168.1.4:8100")!))
+        precondition(EndpointPolicy.allows(URL(string: "http://100.101.2.3:8100")!))
+        precondition(!EndpointPolicy.allows(URL(string: "http://example.com")!))
+        precondition(!EndpointPolicy.allows(URL(string: "https://user:password@example.com")!))
+        let configuration = URLSessionConfiguration.ephemeral
+        configuration.protocolClasses = [RemoteFixture.self]
+        let session = URLSession(configuration: configuration)
+        let remote = try WebDriverConnection(endpoint: URL(string: "http://127.0.0.1:8100")!, session: session)
+        let context = CGContext(data: nil, width: 200, height: 400, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let frame = ScreenImage(image: context.makeImage()!, capturedAt: Date())
+        _ = try await remote.perform(.tap(x: 100, y: 200), image: frame)
+        precondition(RemoteFixture.bodies.last?["x"] as? Double == 50)
+        precondition(RemoteFixture.bodies.last?["y"] as? Double == 100)
+        let receipt = try await remote.perform(.setText(text: "שלום 👋"), image: frame)
+        precondition(receipt.textVerification?.status == .verified)
+        let multiline = "first line\nשלום 👋\nlast line"
+        RemoteFixture.elementType = "XCUIElementTypeTextView"
+        RemoteFixture.readback = multiline
+        let multilineReceipt = try await remote.perform(.setText(text: multiline), image: frame)
+        precondition(multilineReceipt.textVerification?.status == .verified)
+        precondition(RemoteFixture.bodies.reversed().contains { $0["text"] as? String == multiline })
+        let longText = String(repeating: "אבג🙂", count: 301)
+        RemoteFixture.readback = longText
+        let longReceipt = try await remote.perform(.setText(text: longText), image: frame)
+        precondition(longReceipt.textVerification?.status == .verified)
+        RemoteFixture.elementType = "XCUIElementTypeTextField"
+        RemoteFixture.readback = "שלום 👋"
+        let before = RemoteFixture.paths.count
+        do { _ = try await remote.perform(.setText(text: "unsafe\nsubmit"), image: frame); preconditionFailure("Newline accepted") } catch {}
+        precondition(!RemoteFixture.paths.suffix(RemoteFixture.paths.count - before).contains { $0.hasSuffix("/clear") || $0.hasSuffix("/value") })
+        do { _ = try await remote.perform(.setText(text: "unsafe\tfocus-change"), image: frame); preconditionFailure("Tab accepted") } catch {}
+        RemoteFixture.windowWidth = 200
+        RemoteFixture.windowHeight = 200
+        let orientationPaths = RemoteFixture.paths.count
+        do { _ = try await remote.perform(.tap(x: 100, y: 200), image: frame); preconditionFailure("Orientation change accepted") } catch {}
+        precondition(!RemoteFixture.paths.suffix(RemoteFixture.paths.count - orientationPaths).contains { $0.hasSuffix("/tap") })
+        RemoteFixture.windowWidth = 100
+        RemoteFixture.windowHeight = 200
+        let count = RemoteFixture.paths.count
+        do { _ = try await remote.perform(.tap(x: 201, y: 200), image: frame); preconditionFailure("Out of bounds accepted") } catch {}
+        precondition(!RemoteFixture.paths.suffix(RemoteFixture.paths.count - count).contains { $0.hasSuffix("/tap") })
+        session.invalidateAndCancel()
+        try await remoteRecoveryAndCancellation(frame: frame)
+        print("PASS: remote pixel scaling, focused Unicode readback, bounded multiline TextView entry, newline/tab rejection, orientation/bounds and endpoint policy")
+        if let address = ProcessInfo.processInfo.environment["TAPLYNE_WDA_TEST_ENDPOINT"], let url = URL(string: address) {
+            let live = try WebDriverConnection(endpoint: url)
+            let image = try await live.screenshot()
+            // The task-owned companion's address field, discovered with Argent describe.
+            _ = try await live.perform(.tap(x: image.width / 2, y: Int(Double(image.height) * 0.149)), image: image)
+            let result = try await live.perform(.setText(text: "שלום 👋"), image: try await live.screenshot())
+            precondition(result.textVerification?.status == .verified, "Physical/Simulator remote Unicode readback failed")
+            print("PASS LIVE: WebDriver screenshot, tap and exact Hebrew/emoji field readback")
+        }
+    }
+
+    @MainActor private static func remoteRecoveryAndCancellation(frame: ScreenImage) async throws {
+        func response(_ object: [String: Any], status: Int = 200) -> (Data, Int) {
+            (try! JSONSerialization.data(withJSONObject: object), status)
+        }
+
+        var sessionNumber = 0
+        var paths: [String] = []
+        let recovery = try WebDriverConnection(endpoint: URL(string: "http://127.0.0.1:8100")!, exchange: { method, path, _ in
+            paths.append("\(method) \(path)")
+            if path == "session" {
+                sessionNumber += 1
+                return response(["value": ["sessionId": "recovery-\(sessionNumber)"]])
+            }
+            if path.hasSuffix("/window/size") {
+                return response(["value": ["width": 100, "height": 200]])
+            }
+            if path.hasSuffix("/wda/tap") && sessionNumber == 1 {
+                return response(["value": ["error": "invalid session id", "message": "The session was discarded."]], status: 404)
+            }
+            return response(["value": NSNull()])
+        })
+        do { _ = try await recovery.perform(.tap(x: 100, y: 200), image: frame); preconditionFailure("Uncertain tap was reported as successful") } catch {}
+        precondition(sessionNumber == 1)
+        precondition(paths.filter { $0 == "POST session" }.count == 1)
+        precondition(paths.filter { $0.contains("/wda/tap") }.count == 1)
+        _ = try await recovery.perform(.tap(x: 100, y: 200), image: frame)
+        precondition(sessionNumber == 2, "The next explicit action did not establish a fresh session")
+        precondition(paths.filter { $0.contains("/wda/tap") }.count == 2, "The failed mutating request was replayed")
+        await recovery.close()
+        precondition(paths.contains("DELETE session/recovery-2"), "Injected close did not target the active session")
+
+        final class CancellationBox {
+            var task: Task<InputReceipt, Error>?
+        }
+        let cancellation = CancellationBox()
+        var cancellationPaths: [String] = []
+        let canceled = try WebDriverConnection(endpoint: URL(string: "http://127.0.0.1:8100")!, exchange: { _, path, _ in
+            cancellationPaths.append(path)
+            if path == "session" { return response(["value": ["sessionId": "cancel-session"]]) }
+            if path.hasSuffix("/window/size") { return response(["value": ["width": 100, "height": 200]]) }
+            if path.hasSuffix("/element/active") { return response(["value": ["ELEMENT": "field-1"]]) }
+            if path.hasSuffix("/name") { return response(["value": "XCUIElementTypeTextField"]) }
+            if path.hasSuffix("/clear") {
+                cancellation.task?.cancel()
+                return response(["value": NSNull()])
+            }
+            return response(["value": "should not be read"])
+        })
+        let task = Task<InputReceipt, Error> { @MainActor in
+            try await canceled.perform(.setText(text: "cancel me"), image: frame)
+        }
+        cancellation.task = task
+        do { _ = try await task.value; preconditionFailure("Cancellation after clear was ignored") } catch {}
+        precondition(cancellationPaths.contains { $0.hasSuffix("/clear") })
+        precondition(!cancellationPaths.contains { $0.hasSuffix("/value") }, "Text was sent after cancellation following clear")
+    }
+}
+
+private final class RemoteFixture: URLProtocol, @unchecked Sendable {
+    nonisolated(unsafe) static var paths: [String] = []
+    nonisolated(unsafe) static var bodies: [[String: Any]] = []
+    nonisolated(unsafe) static var elementType = "XCUIElementTypeTextField"
+    nonisolated(unsafe) static var readback = "שלום 👋"
+    nonisolated(unsafe) static var windowWidth = 100
+    nonisolated(unsafe) static var windowHeight = 200
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {
+        let path = request.url!.path
+        Self.paths.append(path)
+        let data: Data
+        if let body = request.httpBody { data = body }
+        else if let stream = request.httpBodyStream {
+            stream.open(); defer { stream.close() }
+            var result = Data(); var buffer = [UInt8](repeating: 0, count: 4096)
+            while stream.hasBytesAvailable { let count = stream.read(&buffer, maxLength: buffer.count); if count <= 0 { break }; result.append(buffer, count: count) }
+            data = result
+        } else { data = Data() }
+        Self.bodies.append((try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:])
+        let value: Any
+        if path == "/session" { value = ["sessionId": "test-session"] }
+        else if path.hasSuffix("/window/size") { value = ["width": Self.windowWidth, "height": Self.windowHeight] }
+        else if path.hasSuffix("/element/active") { value = ["ELEMENT": "field-1"] }
+        else if path.hasSuffix("/name") { value = Self.elementType }
+        else if path.hasSuffix("/attribute/value") { value = Self.readback }
+        else { value = NSNull() }
+        let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: ["Content-Type": "application/json"])!
+        client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+        client?.urlProtocol(self, didLoad: try! JSONSerialization.data(withJSONObject: ["value": value]))
+        client?.urlProtocolDidFinishLoading(self)
+    }
+    override func stopLoading() {}
 }

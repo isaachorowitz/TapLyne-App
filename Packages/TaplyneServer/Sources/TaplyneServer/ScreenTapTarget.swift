@@ -1,7 +1,7 @@
 import CoreGraphics
 import Vision
 
-/// OCR finds an app's caption; iOS Spotlight's hit target is the icon above it.
+/// OCR finds an app's caption; Home Screen and Spotlight targets are the icons above it.
 /// Infer that target only when the image contains a matching row of square tiles.
 enum ScreenTapTarget {
     static func annotate(_ screen: ScreenDescription, image: CGImage) -> ScreenDescription {
@@ -9,7 +9,7 @@ enum ScreenTapTarget {
             a.id != b.id && abs(a.bounds.cgRect.midY - b.bounds.cgRect.midY) < a.bounds.height * 0.6
         } }) else { return screen }
         let request = VNDetectRectanglesRequest()
-        request.minimumSize = 0.06; request.minimumAspectRatio = 0.75
+        request.minimumSize = 0.04; request.minimumAspectRatio = 0.75
         request.maximumAspectRatio = 1; request.maximumObservations = 100
         request.minimumConfidence = 0.8; request.quadratureTolerance = 20
         guard (try? VNImageRequestHandler(cgImage: image).perform([request])) != nil else { return screen }
@@ -18,7 +18,9 @@ enum ScreenTapTarget {
             return CGRect(x: b.minX * CGFloat(image.width), y: (1 - b.maxY) * CGFloat(image.height),
                           width: b.width * CGFloat(image.width), height: b.height * CGFloat(image.height))
         }.filter { rect in
-            rect.width >= CGFloat(image.width) * 0.08 && rect.width <= CGFloat(image.width) * 0.25 &&
+            // Tablet icons occupy less of the screen than phone icons. A matching
+            // caption and square neighbour are still required.
+            rect.width >= CGFloat(image.width) * 0.05 && rect.width <= CGFloat(image.width) * 0.25 &&
             rect.height / rect.width >= 0.75 && rect.height / rect.width <= 1.3
         }
         var result = screen

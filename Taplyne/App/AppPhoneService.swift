@@ -27,6 +27,7 @@ final class AppPhoneService: PhoneService {
         if !refresh, let cached = phone.config.apps {
             return AppList(apps: cached, updatedAt: phone.config.appsUpdatedAt, source: "database")
         }
+        if phone.remote != nil { return AppList(apps: phone.config.apps ?? [], updatedAt: phone.config.appsUpdatedAt, source: "database") }
         guard phone.plugged else { throw PhoneServiceError.phoneNotReady(Phone.Readiness.unplugged.reason ?? "") }
         do {
             let apps = try await registry.tool.apps(udid: phone.udid).map { AppEntry(name: $0.name, bundleID: $0.bundleID) }
@@ -40,6 +41,7 @@ final class AppPhoneService: PhoneService {
 
     func screenshot(phoneID: String) async throws -> ScreenImage {
         let phone = try find(phoneID)
+        if let remote = phone.remote { return try await remote.screenshot() }
         guard let stream = phone.stream else {
             throw PhoneServiceError.phoneNotReady(phone.readiness.reason ?? "The screen is not available.")
         }
@@ -50,6 +52,18 @@ final class AppPhoneService: PhoneService {
 
     func liveFrames(phoneID: String) async throws -> AsyncStream<ScreenImage> {
         let phone = try find(phoneID)
+        if phone.remote != nil {
+            return AsyncStream { continuation in
+                let task = Task { @MainActor [weak phone] in
+                    while !Task.isCancelled, let phone {
+                        if let image = phone.remoteImage, Date().timeIntervalSince(image.capturedAt) < 2 { continuation.yield(image) }
+                        do { try await Task.sleep(for: .milliseconds(500)) } catch { break }
+                    }
+                    continuation.finish()
+                }
+                continuation.onTermination = { _ in task.cancel() }
+            }
+        }
         guard let stream = phone.stream else {
             throw PhoneServiceError.phoneNotReady(phone.readiness.reason ?? "The screen is not available.")
         }
@@ -78,6 +92,25 @@ final class AppPhoneService: PhoneService {
     /// The one input queue is shared by the server, manual controls and embedded agent.
     @discardableResult static func perform(_ action: PhoneAction, on phone: Phone, registry: PhoneRegistry,
                                            byAgent: Bool = false, reference: ActionReference? = nil, manualImage: ScreenImage? = nil) async throws -> InputReceipt {
+        if let remote = phone.remote {
+            return try await phone.enqueue(origin: byAgent ? .agent : .manual, expected: reference?.control) {
+                let current = try await remote.screenshot()
+                if let reference { try reference.validate(current: current, control: reference.control, action: action) }
+                if let manualImage {
+                    guard manualImage.width == current.width, manualImage.height == current.height,
+                          Date().timeIntervalSince(manualImage.capturedAt) < 5,
+                          !ScreenComparison.changed(manualImage.image, current.image) else {
+                        throw PhoneServiceError.failed("The remote screen changed. Inspect it before acting.")
+                    }
+                }
+                phone.activity = action.summary
+                phone.lastAction = ActionEvent(action: action, byAgent: byAgent)
+                defer { phone.activity = nil }
+                let result = try await remote.perform(action, image: current)
+                phone.lastVerification = result.textVerification
+                return result
+            }
+        }
         let allowedWithoutCalibration: Bool
         switch action {
         case .home, .type, .setText, .keypress: allowedWithoutCalibration = true

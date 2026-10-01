@@ -10,6 +10,7 @@ struct PhoneScreenView: NSViewRepresentable {
     }
 
     let session: AVCaptureSession?
+    var remoteImage: CGImage? = nil
     let phoneSize: CGSize?
     let onEvent: (Event) -> Void
 
@@ -23,6 +24,7 @@ struct PhoneScreenView: NSViewRepresentable {
         view.onEvent = onEvent
         view.phoneSize = phoneSize
         view.attach(session)
+        view.showRemote(remoteImage)
     }
 }
 
@@ -31,6 +33,7 @@ final class ScreenNSView: NSView {
     var phoneSize: CGSize?
     private var pressedOnVideo = false
     private var preview: AVCaptureVideoPreviewLayer?
+    private let remoteLayer = CALayer()
     private weak var attached: AVCaptureSession?
 
     override init(frame: NSRect) {
@@ -40,6 +43,8 @@ final class ScreenNSView: NSView {
         layer?.cornerRadius = 18
         layer?.cornerCurve = .continuous
         layer?.masksToBounds = true
+        remoteLayer.contentsGravity = .resizeAspect
+        layer?.addSublayer(remoteLayer)
     }
 
     required init?(coder: NSCoder) { fatalError() }
@@ -59,6 +64,8 @@ final class ScreenNSView: NSView {
         preview = layer
     }
 
+    func showRemote(_ image: CGImage?) { remoteLayer.contents = image; remoteLayer.isHidden = image == nil }
+
     override func layout() {
         super.layout()
         CATransaction.begin()
@@ -66,6 +73,7 @@ final class ScreenNSView: NSView {
         // Match the rounded corners of a modern iPhone display.
         layer?.cornerRadius = max(12, bounds.width * 0.12)
         preview?.frame = bounds
+        remoteLayer.frame = bounds
         CATransaction.commit()
     }
 

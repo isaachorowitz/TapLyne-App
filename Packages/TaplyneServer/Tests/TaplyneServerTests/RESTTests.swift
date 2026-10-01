@@ -9,6 +9,66 @@ import Testing
 
     init() throws { h = try Harness() }
 
+    @Test func conversationAuthenticationValidationAndUnicode() async throws {
+        let conversations = FakeConversations()
+        let h = try Harness(conversations: conversations)
+        let path = "/companion/conversations/phone-a"
+        #expect(try await h.request("GET", path, auth: nil).status == 401)
+        #expect(try await h.request("POST", path, body: ["action": "send", "text": "hi"], auth: "companion-test-only").status == 400)
+        #expect(try await h.request("POST", path, body: ["id": UUID().uuidString, "action": "send", "text": "  "], auth: "companion-test-only").status == 400)
+        #expect(try await h.request("POST", path, body: ["id": UUID().uuidString, "action": "send", "text": String(repeating: "x", count: 16001)], auth: "companion-test-only").status == 400)
+        #expect(try await h.request("DELETE", path, auth: "companion-test-only").status == 405)
+        let reply = try await h.request("POST", path, body: ["id": UUID().uuidString, "action": "send", "text": "שלום 👋", "clientID": UUID().uuidString, "sequence": 1, "controlGeneration": 0, "serverSessionID": UUID().uuidString, "issuedAt": Date().timeIntervalSinceReferenceDate], auth: "companion-test-only")
+        #expect(reply.status == 200)
+        let decoded = try JSONDecoder().decode(ConversationSnapshot.self, from: reply.data)
+        #expect(decoded.phoneID == "phone-a")
+        #expect(decoded.messages.last?.text == "שלום 👋")
+        #expect(try await h.request("GET", path).status == 401)
+        #expect(try await h.request("POST", "/companion/conversations/phone-b", body: ["id": UUID().uuidString, "action": "resume"], auth: "companion-test-only").status == 404)
+        #expect(try await h.request("POST", "/v1/conversations/phone-a", body: ["id": UUID().uuidString, "action": "resume"]).status == 404)
+        #expect(await conversations.count == 1)
+    }
+
+    @Test func deviceCapabilitiesAreIsolatedAndRevoked() async throws {
+        let h = try Harness(conversations: FakeConversations())
+        h.server.registerAgent(phoneID: id, key: "device-agent-a")
+        func rpc(_ name: String, _ args: [String: Any] = [:], key: String = "device-agent-a") async throws -> Reply {
+            try await h.request("POST", "/mcp", body: ["jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": ["name": name, "arguments": args]], auth: key)
+        }
+        let phones = try await rpc("list_phones")
+        let serialized = String(decoding: phones.data, as: UTF8.self)
+        #expect(serialized.contains(id))
+        #expect(!serialized.contains(FakePhoneService.offline))
+        let denied = try await rpc("get_phone_status", ["phone_id": FakePhoneService.offline])
+        #expect((denied.json["result"] as? [String: Any])?["isError"] as? Bool == true)
+        #expect(try await h.request("GET", "/v1/phones", auth: "device-agent-a").status == 401)
+        #expect(try await h.request("GET", "/companion/phones", auth: "device-agent-a").status == 401)
+        h.server.registerAgent(phoneID: id, key: "device-agent-new")
+        #expect(try await rpc("list_phones").status == 401)
+        #expect(try await rpc("list_phones", key: "device-agent-new").status == 200)
+        #expect(try await h.request("POST", "/companion/voice/phone-a", auth: nil).status == 401)
+        #expect(try await h.request("POST", "/companion/voice/phone-a").status == 401)
+        #expect(try await h.request("POST", "/companion/voice/phone-b", auth: "companion-test-only").status == 404)
+        #expect(try await h.request("POST", "/companion/voice/phone-a", auth: "companion-test-only").status == 409)
+    }
+
+    @Test func voiceLeaseRevocationWinsOverDelayedSendAndHeartbeat() {
+        let start = Date(timeIntervalSince1970: 100)
+        let old = UUID(), fresh = UUID()
+        var book = ConversationLeaseBook()
+        book.revoke(old, phoneID: "a")
+        let leaseResult1 = book.grant(old, phoneID: "a", now: start); #expect(!leaseResult1)
+        let leaseResult2 = book.grant(fresh, phoneID: "a", now: start); #expect(leaseResult2)
+        let leaseResult3 = book.renew(old, phoneID: "a", now: start); #expect(!leaseResult3)
+        let leaseResult4 = book.renew(fresh, phoneID: "b", now: start); #expect(!leaseResult4)
+        let leaseResult5 = book.renew(fresh, phoneID: "a", now: start.addingTimeInterval(5)); #expect(leaseResult5)
+        #expect(!book.expired(fresh, phoneID: "a", now: start.addingTimeInterval(12)))
+        #expect(book.expired(fresh, phoneID: "a", now: start.addingTimeInterval(15)))
+        let leaseResult6 = book.renew(fresh, phoneID: "a", now: start.addingTimeInterval(15)); #expect(!leaseResult6)
+        book.revoke(old, phoneID: "a")
+        #expect(book.currentID(phoneID: "a") == fresh)
+    }
+
     @Test func apiKeyFormat() {
         let key = APIKeyGenerator.generate()
         #expect(key.hasPrefix("tl_") && key.count == 43)
@@ -203,5 +263,18 @@ import Testing
         #expect(first.path == "/a" && first.query["x"] == "1" && first.header("x-api-key") == "k")
         guard case .request(let second) = HTTPParser.parse(&two) else { Issue.record("expected request"); return }
         #expect(second.path == "/b")
+    }
+}
+
+private actor FakeConversations: ConversationService {
+    var count = 0
+    var messages: [ConversationMessage] = []
+    func snapshot(phoneID: String) -> ConversationSnapshot {
+        .init(phoneID: phoneID, running: false, paused: false, messages: messages)
+    }
+    func command(phoneID: String, command: ConversationCommand) -> ConversationSnapshot {
+        count += 1
+        messages.append(.init(id: command.id.uuidString, kind: "user", text: command.text ?? ""))
+        return snapshot(phoneID: phoneID)
     }
 }

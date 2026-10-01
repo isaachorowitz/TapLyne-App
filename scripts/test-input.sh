@@ -16,7 +16,7 @@ swiftc -parse-as-library -I "$MODULE_PATH" \
   Taplyne/Bluetooth/HIDReports.swift Taplyne/Bluetooth/HIDProfile.swift \
   Taplyne/Control/KeyMap.swift Taplyne/Control/PointerLocator.swift \
   Taplyne/Control/PhoneDriver.swift Taplyne/Control/PhoneTextInput.swift \
-  Taplyne/Control/PhoneNavigationInput.swift Taplyne/Control/ClipboardBridge.swift \
+  Taplyne/Control/PhoneNavigationInput.swift Taplyne/Control/ClipboardBridge.swift Taplyne/Control/WebDriverConnection.swift \
   Tests/Control/InputSafetyTests.swift "${LINK[@]}" \
   -o .build/input-tests/input-safety
 .build/input-tests/input-safety

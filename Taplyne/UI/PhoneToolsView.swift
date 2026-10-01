@@ -79,7 +79,7 @@ struct PhoneToolsView: View {
     }
 
     private func tap(_ element: ScreenElement) {
-        guard let screen, let image = phone.stream?.latestImage(), screen.width == image.width,
+        guard let screen, let image = phone.currentImage, screen.width == image.width,
               screen.height == image.height, Date().timeIntervalSince(screen.capturedAt) < 5 else {
             status = "Describe the screen again before tapping."; return
         }

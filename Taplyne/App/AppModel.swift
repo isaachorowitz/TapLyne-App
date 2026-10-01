@@ -10,29 +10,52 @@ final class AppModel: ObservableObject {
     let capture = ScreenCaptureManager()
     let registry: PhoneRegistry
     let service: AppPhoneService
-    let chat = AgentChat()
+    private var agentKeys: [String: String] = [:]
+    private var chats: [String: AgentChat] = [:]
+    var chat: AgentChat { conversation(for: selectedPhone?.udid ?? "unselected") }
+    @Published var agentProvider: String = UserDefaults.standard.string(forKey: "agentProvider") ?? "claude" {
+        didSet {
+            if oldValue != agentProvider { realtime.stop(); speech.stop() }
+            if !Self.isPreview { UserDefaults.standard.set(agentProvider, forKey: "agentProvider") }
+        }
+    }
+    let runnerSetup = RunnerSetup()
+    let realtime = RealtimeVoice()
+    let speech = ConversationSpeech()
+    var voicePhoneID: String?
     let automation: PhoneAutomation
     let bluetooth = ClassicHIDTransport()
     let classic = HIDClassicDevice()
     let classicPairer = ClassicPairer()
     var bridge: TLClassicBridge { bluetooth.bridge }
 
-    @Published var selectedPhoneID: String?
+    @Published var selectedPhoneID: String? { didSet {
+        if oldValue != selectedPhoneID { realtime.stop(); speech.stop(); voicePhoneID = nil }
+    } }
     @Published private(set) var serverPort: UInt16?
     @Published private(set) var serverError: String?
     @Published private(set) var apiKey: String
     @Published var calibrationStatus: String?
 
-    @Published var serverPortSetting: Int { didSet { UserDefaults.standard.set(serverPortSetting, forKey: "serverPort") } }
-    @Published var listenOnNetwork: Bool { didSet { UserDefaults.standard.set(listenOnNetwork, forKey: "listenOnNetwork") } }
-    @Published var agentModel: String { didSet { UserDefaults.standard.set(agentModel, forKey: "agentModel") } }
+    @Published var serverPortSetting: Int { didSet { if !Self.isPreview { UserDefaults.standard.set(serverPortSetting, forKey: "serverPort") } } }
+    @Published var listenOnNetwork: Bool { didSet { if !Self.isPreview { UserDefaults.standard.set(listenOnNetwork, forKey: "listenOnNetwork") } } }
+    @Published var agentModel: String { didSet { if !Self.isPreview { UserDefaults.standard.set(agentModel, forKey: "agentModel") } } }
 
     private var server: TaplyneHTTPServer?
+    private lazy var conversationService = AppConversationService(model: self)
     #if DEBUG
     private var debugConsole: DebugConsole?
     #endif
     private var started = false
     private let log = Logger(subsystem: "agency.ziplyne.taplyne", category: "app")
+
+    private static var isPreview: Bool {
+        #if DEBUG
+        return ProcessInfo.processInfo.environment["TAPLYNE_PREVIEW"] != nil
+        #else
+        return false
+        #endif
+    }
 
     init() {
         registry = PhoneRegistry(hid: hid, bluetooth: bluetooth, capture: capture)
@@ -44,7 +67,17 @@ final class AppModel: ObservableObject {
         agentModel = defaults.string(forKey: "agentModel") ?? ""
         #if DEBUG
         if ProcessInfo.processInfo.environment["TAPLYNE_PREVIEW"] != nil {
+            if ProcessInfo.processInfo.environment["TAPLYNE_TEST_IMPORT_OPENAI_KEY"] == "1",
+               let key = ProcessInfo.processInfo.environment["OPENAI_API_KEY"], !key.isEmpty {
+                _ = Keychain.write(key, account: Keychain.Account.openAIPreview)
+            }
+            unsetenv("OPENAI_API_KEY")
+            unsetenv("TAPLYNE_TEST_IMPORT_OPENAI_KEY")
+            serverPortSetting = 17788
+            listenOnNetwork = false
             apiKey = "preview-only-no-server"
+            if let provider = ProcessInfo.processInfo.environment["TAPLYNE_TEST_AGENT_PROVIDER"], ["openai", "claude", "chatgpt"].contains(provider) { agentProvider = provider }
+            if let chosenModel = ProcessInfo.processInfo.environment["TAPLYNE_TEST_AGENT_MODEL"] { agentModel = chosenModel }
             return
         }
         #endif
@@ -60,29 +93,13 @@ final class AppModel: ObservableObject {
     func start() {
         guard !started else { return }
         started = true
+        registry.relayServerPort = { [weak self] in self?.serverPort }
         capture.start()
         registry.start()
         startServer()
-        chat.mcpURL = { [weak self] in self?.mcpURL }
-        chat.apiKey = { [weak self] in self?.apiKey ?? "" }
-        chat.model = { [weak self] in self?.agentModel }
-        chat.phoneContext = { [weak self] in self?.phoneContext() ?? "" }
-        chat.phoneID = { [weak self] in self?.selectedPhone?.udid }
-        chat.prepareInput = { [weak self] id in
-            guard let self, let id, let phone = self.registry.phone(id) else { return false }
-            return phone.controlState.mode == .automatic
-        }
-        chat.onResumeReady = { [weak self] id in
-            guard let self, let id, let phone = self.registry.phone(id) else { return }
-            phone.control(.resume)
-        }
-        chat.cancelInput = { [weak self] id, command in
-            guard let self, let id, let phone = self.registry.phone(id) else { return }
-            phone.control(command)
-        }
         registry.onControlChange = { [weak self] phone, state in
-            guard let self, phone.udid == self.chat.activePhoneID else { return }
-            if state.mode != .automatic { self.chat.pauseForControlChange() }
+            guard let self, let chat = self.chats[phone.udid] else { return }
+            if state.mode != .automatic { chat.pauseForControlChange() }
         }
         #if DEBUG
         if UserDefaults.standard.bool(forKey: "debugConsole") {
@@ -93,6 +110,46 @@ final class AppModel: ObservableObject {
             debugConsole = console
         }
         #endif
+    }
+
+    func conversation(for id: String) -> AgentChat {
+        if let existing = chats[id] { return existing }
+        let chat = AgentChat()
+        if agentKeys[id] == nil {
+            let key = APIKeyGenerator.generate(); agentKeys[id] = key
+            server?.registerAgent(phoneID: id, key: key)
+        }
+        chat.selectDevice(id)
+        chat.mcpURL = { [weak self] in self?.mcpURL }
+        chat.apiKey = { [weak self] in self?.agentKeys[id] ?? "" }
+        chat.provider = { [weak self] in self?.agentProvider ?? "claude" }
+        chat.providerKey = { [weak self] in self?.openAIKey() ?? "" }
+        chat.model = { [weak self] in self?.agentModel }
+        chat.phoneID = { id }
+        chat.phoneContext = { [weak self] in self?.registry.phone(id).map { "Selected device: \($0.title), phone_id \(id)." } ?? "Device unavailable." }
+        chat.prepareInput = { [weak self] _ in self?.registry.phone(id)?.controlState.mode == .automatic }
+        chat.onResumeReady = { [weak self] _ in self?.registry.phone(id)?.control(.resume) }
+        chat.cancelInput = { [weak self] _, command in self?.registry.phone(id)?.control(command) }
+        chats[id] = chat
+        return chat
+    }
+
+    func stopConversations() { realtime.stop(); speech.stop(); for chat in chats.values { chat.stop() } }
+
+    func openAIKey(voice: Bool = false) -> String? {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["TAPLYNE_PREVIEW"] != nil { return Keychain.read(Keychain.Account.openAIPreview) }
+        #endif
+        return voice ? Keychain.voiceOpenAIKey() : Keychain.openAIKey()
+    }
+
+    func stop() {
+        realtime.stop(); speech.stop()
+        runnerSetup.stop()
+        for chat in chats.values { chat.stop() }
+        registry.stopRemoteDevices()
+        server?.stop()
+        bluetooth.stop()
     }
 
     var selectedPhone: Phone? {
@@ -113,13 +170,22 @@ final class AppModel: ObservableObject {
         server?.stop()
         server = nil
         serverPort = nil
-        let configuration = ServerConfiguration(
+        for phone in registry.phones where agentKeys[phone.udid] == nil { agentKeys[phone.udid] = APIKeyGenerator.generate() }
+        var configuration = ServerConfiguration(
             host: listenOnNetwork ? "0.0.0.0" : "127.0.0.1",
             port: UInt16(clamping: serverPortSetting),
             apiKey: apiKey,
-            version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
+            version: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
+            companionKeys: Dictionary(uniqueKeysWithValues: registry.phones.compactMap { phone in
+                Keychain.read("companion-" + phone.udid).map { (phone.udid, $0) }
+            }), agentKeys: agentKeys
         )
-        let server = TaplyneHTTPServer(configuration: configuration, service: service)
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["TAPLYNE_PREVIEW"] == "remote", ProcessInfo.processInfo.environment["TAPLYNE_TEST_RUNNER_PAIRING_DIR"] == nil, let id = registry.phones.first?.udid {
+            configuration.companionKeys = [id: "companion-test-only"]
+        }
+        #endif
+        let server = TaplyneHTTPServer(configuration: configuration, service: service, conversations: conversationService)
         do {
             try server.start()
             self.server = server
@@ -240,6 +306,61 @@ final class AppModel: ObservableObject {
     }
 
     #if DEBUG
+    /// A private, explicitly requested preview can use a runner already paired by QA.
+    /// This never discovers credentials, changes production phone storage, or stages a runner.
+    func startRelayPreviewIfRequested() -> Bool {
+        let environment = ProcessInfo.processInfo.environment
+        guard environment["TAPLYNE_PREVIEW"] == "remote", let directory = environment["TAPLYNE_TEST_RUNNER_PAIRING_DIR"] else { return false }
+        guard !started else { return true }
+        started = true
+        do {
+            let files = FileManager.default
+            let root = URL(fileURLWithPath: directory, isDirectory: true)
+            let id = environment["TAPLYNE_TEST_PREVIEW_PHONE_ID"] ?? "preview-relay-ipad-20261001"
+            guard id.range(of: "^preview-relay-[A-Za-z0-9-]{1,70}$", options: .regularExpression) != nil else { throw RelayFailure("Invalid preview phone identifier.") }
+            func privateData(_ name: String) throws -> Data {
+                let path = root.appendingPathComponent(name)
+                let attributes = try files.attributesOfItem(atPath: path.path)
+                guard attributes[.type] as? FileAttributeType == .typeRegular,
+                      (attributes[.posixPermissions] as? NSNumber)?.intValue == 0o600,
+                      (attributes[.ownerAccountID] as? NSNumber)?.uint32Value == getuid(),
+                      (attributes[.size] as? NSNumber)?.intValue ?? Int.max < 8_192 else { throw RelayFailure("Preview pairing files must be private regular files owned by this user.") }
+                return try Data(contentsOf: path)
+            }
+            let host = try JSONDecoder().decode(RelayConfiguration.self, from: privateData("host.json")).validated()
+            let device = try JSONDecoder().decode(RelayConfiguration.self, from: privateData("device.json")).validated()
+            guard host.role == .host, device.role == .device, host.scope == .runner, device.scope == .runner,
+                  host.room == device.room, host.endpoint == device.endpoint, host.encryptionKey == device.encryptionKey else { throw RelayFailure("Preview runner roles do not match.") }
+            let profile: RelayDeviceProfile
+            if let saved = RelayDeviceProfile.load(id) {
+                guard saved.runnerHost == host, saved.runnerDevice == device else { throw RelayFailure("Preview pairing differs from its saved profile. Remove the old preview accounts first.") }
+                profile = saved
+            } else {
+                let conversation = try RelayConfiguration.pair(endpoint: host.endpoint, scope: .conversation, enrollment: host.enrollmentToken)
+                profile = RelayDeviceProfile(runnerHost: host, runnerDevice: device, conversationHost: conversation.host, conversationDevice: conversation.device)
+                try profile.save(id)
+            }
+            let key = Keychain.read("companion-" + id) ?? APIKeyGenerator.generate()
+            guard Keychain.write(key, account: "companion-" + id) else { throw RelayFailure("Could not save the preview companion key.") }
+            let pairing = RelayCompanionPairing(configuration: profile.conversationDevice, phoneID: id, companionKey: key)
+            for (name, data) in [("companion-pairing.json", try JSONEncoder().encode(pairing)),
+                                 ("companion-pairing.url", Data(try pairing.url().absoluteString.utf8))] {
+                let path = root.appendingPathComponent(name)
+                if files.fileExists(atPath: path.path) { _ = try privateData(name) }
+                guard files.createFile(atPath: path.path, contents: data, attributes: [.posixPermissions: 0o600]) else { throw RelayFailure("Could not export the private companion pairing.") }
+            }
+            let phone = Phone(config: PhoneConfig(udid: id, name: "Taplyne relay test iPad", model: "Physical iPad", createdAt: Date(), relayEnabled: true))
+            registry.add(phone); selectedPhoneID = id
+            registry.relayServerPort = { [weak self] in self?.serverPort }
+            registry.onControlChange = { [weak self] phone, state in
+                guard let self, let chat = self.chats[phone.udid], state.mode != .automatic else { return }
+                chat.pauseForControlChange()
+            }
+            startServer(); registry.attachRelay(phone)
+        } catch { serverError = "Relay preview could not start: " + error.localizedDescription }
+        return true
+    }
+
     // MARK: - Development console
 
     private func handleDebug(_ r: [String: Any]) async -> [String: Any] {

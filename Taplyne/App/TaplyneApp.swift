@@ -10,8 +10,7 @@ struct TaplyneApp: App {
                 .environmentObject(model)
                 .task { start() }
                 .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
-                    model.chat.stop()
-                    model.bluetooth.stop()
+                    model.stop()
                 }
                 .frame(minWidth: 1240, minHeight: 720)
         }
@@ -31,6 +30,14 @@ struct TaplyneApp: App {
         if let scenario = env["TAPLYNE_PREVIEW"] {
             if let appearance = env["TAPLYNE_APPEARANCE"] {
                 NSApp.appearance = NSAppearance(named: appearance == "dark" ? .darkAqua : .aqua)
+            }
+            if model.startRelayPreviewIfRequested() { return }
+            if scenario == "remote", let raw = env["TAPLYNE_TEST_REMOTE_ENDPOINT"], let url = URL(string: raw) {
+                if let phone = try? model.registry.addRemote(name: "Taplyne test iPad", endpoint: url) {
+                    model.selectedPhoneID = phone.udid
+                    model.startServer()
+                }
+                return
             }
             model.registry.seedPreview(scenario == "agent" ? "ready" : scenario)
             model.selectedPhoneID = model.registry.phones.first?.udid

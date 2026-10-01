@@ -16,11 +16,14 @@ final class FakePhoneService: PhoneService, @unchecked Sendable {
     private var _state = PhoneControlState()
     private var _image: CGImage?
     private var _afterInputImages: [CGImage] = []
+    private var _screenshotCount = 0
     var textVerificationStatus: VerificationStatus = .unverified
     var pauseAfterInput = false
     var captureFailsAfterInput = false
     var changeScreensAfterInput = false
     var performDelay: Duration = .zero
+    var screenshotDelay: Duration = .zero
+    var screenshotCapturedAt: Date?
     var failNextPerform: PhoneServiceError?
 
     init() {
@@ -35,6 +38,7 @@ final class FakePhoneService: PhoneService, @unchecked Sendable {
     }
 
     var actions: [PhoneAction] { lock.withLock { _actions } }
+    var screenshotCount: Int { lock.withLock { _screenshotCount } }
     var maxConcurrentActions: Int { lock.withLock { _maxRunning } }
     var liveStopped: Bool { lock.withLock { _liveStopped } }
 
@@ -64,12 +68,14 @@ final class FakePhoneService: PhoneService, @unchecked Sendable {
     }
 
     func screenshot(phoneID: String) async throws -> ScreenImage {
+        if screenshotDelay != .zero { try await Task.sleep(for: screenshotDelay) }
         if captureFailsAfterInput && !actions.isEmpty { throw PhoneServiceError.timeout }
         let image = lock.withLock { () -> CGImage? in
+            _screenshotCount += 1
             if !_actions.isEmpty && !_afterInputImages.isEmpty { _image = _afterInputImages.removeFirst() }
             return _image
         }
-        return ScreenImage(image: image ?? Self.makeImage(), capturedAt: Date())
+        return ScreenImage(image: image ?? Self.makeImage(), capturedAt: screenshotCapturedAt ?? Date())
     }
 
     func setImagesAfterInput(_ images: [CGImage]) { lock.withLock { _afterInputImages = images } }

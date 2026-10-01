@@ -17,10 +17,10 @@ final class Harness: @unchecked Sendable {
     let key = APIKeyGenerator.generate()
     let session = URLSession(configuration: .ephemeral)
 
-    init() throws {
+    init(conversations: (any ConversationService)? = nil) throws {
         server = TaplyneHTTPServer(
-            configuration: ServerConfiguration(host: "127.0.0.1", port: 0, apiKey: key, version: "9.9.9"),
-            service: service)
+            configuration: ServerConfiguration(host: "127.0.0.1", port: 0, apiKey: key, version: "9.9.9", companionKeys: ["phone-a": "companion-test-only"]),
+            service: service, conversations: conversations)
         try server.start()
     }
 

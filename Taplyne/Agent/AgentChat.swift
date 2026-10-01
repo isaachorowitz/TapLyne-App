@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import CryptoKit
 import os
 import TaplyneServer
 
@@ -9,18 +10,18 @@ import TaplyneServer
 @MainActor
 final class AgentChat: ObservableObject {
     struct Entry: Identifiable {
-        enum Kind { case user, assistant, tool, image, status, error }
-        let id = UUID()
+        enum Kind: String { case user, assistant, tool, image, status, error }
+        var id = UUID()
         let kind: Kind
         var text: String
         var image: NSImage?
     }
 
     @Published private(set) var entries: [Entry] = []
-    @Published private(set) var running = false
-    @Published private(set) var paused = false
+    @Published var running = false
+    @Published var paused = false
     var phoneID: () -> String? = { nil }
-    private(set) var activePhoneID: String?
+    var activePhoneID: String?
     var prepareInput: (String?) -> Bool = { _ in true }
     var onResumeReady: (String?) -> Void = { _ in }
     var cancelInput: (String?, PhoneControlCommand) -> Void = { _, _ in }
@@ -35,7 +36,22 @@ final class AgentChat: ObservableObject {
     var executableURL: () -> URL? = { AgentChat.claudeExecutable }
     var workDirectoryOverride: URL?
 
-    private var sessionID: UUID?
+    var store = ConversationStore.standard
+    private(set) var deviceID: String?
+    private var historyAvailable = true
+    private var commands: [ConversationStore.AcceptedCommand] = []
+    @Published private(set) var workflows: [ConversationStore.Workflow] = []
+    @Published private(set) var workflowRuns: [ConversationStore.WorkflowRun] = []
+    private var activeWorkflow: UUID?
+    var onAssistantText: (String) -> Void = { _ in }
+    var provider: () -> String = { "claude" }
+    var providerKey: () -> String = { "" }
+    var directTask: Task<Void, Never>?
+    private var streamingAssistantID: UUID?
+    var voiceLeaseID: UUID?
+    private var pendingVoiceLeaseID: UUID?
+    var pendingPrompt: String?
+    var sessionID: UUID?
     private var process: Process?
     private var lineBuffer = Data()
     private let log = Logger(subsystem: "agency.ziplyne.taplyne", category: "agent")
@@ -54,10 +70,117 @@ final class AgentChat: ObservableObject {
         return dir
     }
 
+    func selectDevice(_ id: String) {
+        guard deviceID != id, !running, !paused else { return }
+        persist()
+        deviceID = id
+        let saved: ConversationStore.Snapshot
+        do { saved = try store.load(id); historyAvailable = true }
+        catch {
+            historyAvailable = false
+            entries = [Entry(kind: .error, text: "Saved history could not be decrypted or read. It has been preserved. Start a new conversation only if you want to replace it.")]
+            sessionID = nil; workflows = []; workflowRuns = []; commands = []
+            return
+        }
+        commands = saved.commands ?? []
+        entries = saved.messages.compactMap { message in
+            guard let kind = Entry.Kind(rawValue: message.kind) else { return nil }
+            return Entry(id: message.id, kind: kind, text: message.text)
+        }
+        sessionID = saved.sessionID
+        workflows = saved.workflows
+        workflowRuns = (saved.workflowRuns ?? []).map { run in
+            var run = run
+            if run.status == "Running" { run.status = "Interrupted"; run.result = "The app closed during this run. Inspect the device before continuing." }
+            return run
+        }
+        if saved.wasRunning { append(.status, "The previous run was interrupted. Inspect the device before continuing; no action has been replayed.") }
+    }
+
+    func runWorkflow(_ workflow: ConversationStore.Workflow, values: [String: String]) throws {
+        guard !running, !paused else { throw ConversationStore.Workflow.WorkflowFailure() }
+        let prompt = try workflow.rendered(values)
+        let run = ConversationStore.WorkflowRun(workflowID: workflow.id, name: workflow.name, status: "Running", result: "")
+        workflowRuns.append(run); workflowRuns = Array(workflowRuns.suffix(100)); activeWorkflow = run.id
+        send(prompt)
+        if !running { finishWorkflow() }
+    }
+
+    func finishWorkflow() {
+        guard let id = activeWorkflow, let index = workflowRuns.firstIndex(where: { $0.id == id }) else { return }
+        workflowRuns[index].status = paused ? "Paused" : "Finished"
+        workflowRuns[index].result = String((entries.last(where: { [.assistant, .error, .status].contains($0.kind) })?.text ?? "Inspect the device to verify the result.").prefix(4000))
+        activeWorkflow = nil
+        persist()
+    }
+
+    func saveWorkflow(name: String, prompt: String) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let prompt = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, !prompt.isEmpty, prompt.count <= 16000, workflows.count < 100 else { return }
+        workflows.append(.init(name: String(name.prefix(100)), prompt: prompt))
+        persist()
+    }
+
+    func deleteWorkflow(_ id: UUID) { workflows.removeAll { $0.id == id }; persist() }
+
+    private func snapshot() -> ConversationStore.Snapshot {
+        ConversationStore.Snapshot(messages: entries.filter { $0.kind != .image && $0.id != streamingAssistantID }.suffix(1000).map {
+            .init(id: $0.id, kind: $0.kind.rawValue, text: $0.text)
+        }, sessionID: sessionID, wasRunning: running, workflows: workflows, workflowRuns: workflowRuns, commands: commands)
+    }
+
+    func persist() {
+        guard let deviceID, historyAvailable else { return }
+        do { try store.save(snapshot(), deviceID: deviceID) }
+        catch { log.error("Conversation could not be saved") }
+    }
+
+    /// Persist acceptance before executing. The latest 1,000 command IDs survive restarts.
+    func accept(_ command: ConversationCommand) throws -> Bool {
+        guard let deviceID, historyAvailable else { throw PhoneServiceError.failed("Conversation storage is unavailable.") }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let fingerprint = Data(SHA256.hash(data: try encoder.encode(command)))
+        if let previous = commands.first(where: { $0.id == command.id }) {
+            guard previous.fingerprint == fingerprint else { throw PhoneServiceError.invalidArgument("A command ID cannot be reused with different content.") }
+            return false
+        }
+        let previous = commands
+        commands.append(.init(id: command.id, fingerprint: fingerprint))
+        if commands.count > 1000 { commands.removeFirst(commands.count - 1000) }
+        do { try store.save(snapshot(), deviceID: deviceID) }
+        catch { commands = previous; throw error }
+        return true
+    }
+
+    /// Interrupt first, cancel queued input, then restart from fresh screen evidence.
+    func steer(_ text: String, leaseID: UUID? = nil) {
+        let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !prompt.isEmpty, prompt.count <= 16000 else { return }
+        guard running || paused else { send(prompt, leaseID: leaseID); return }
+        voiceLeaseID = leaseID; pendingVoiceLeaseID = leaseID
+        pendingPrompt = prompt
+        cancelInput(activePhoneID, .pause)
+        paused = true
+        terminateForControlChange()
+        if !running { continuePending() }
+    }
+
+    func continuePending() {
+        guard let prompt = pendingPrompt else { return }
+        pendingPrompt = nil
+        let lease = pendingVoiceLeaseID; pendingVoiceLeaseID = nil
+        onResumeReady(activePhoneID)
+        paused = false
+        send("The user changed the task. Inspect the current screen; all previous coordinates are invalid. Check completed actions and never repeat an uncertain send or submission. New instruction: " + prompt, leaseID: lease)
+    }
+
     func reset() {
         stop()
+        historyAvailable = true
         entries.removeAll()
         sessionID = nil
+        persist()
     }
 
     func stop() {
@@ -66,6 +189,7 @@ final class AgentChat: ObservableObject {
         defer { stopping = false }
         paused = false
         pendingResume = false
+        pendingPrompt = nil
         if running { cancelInput(activePhoneID, .stop) }
         terminateForControlChange()
         append(.status, "Stopped. You can continue in this conversation.")
@@ -79,23 +203,28 @@ final class AgentChat: ObservableObject {
     }
 
     private func terminateForControlChange() {
+        directTask?.cancel()
         guard let process, process.isRunning else { return }
         expectedTerminations.insert(ObjectIdentifier(process))
         process.terminate()
     }
 
+    func finishPendingResume() { if pendingResume { resume() } }
+
     func resume() {
         guard paused else { return }
-        if process?.isRunning == true { pendingResume = true; return }
+        if running { pendingResume = true; return }
         onResumeReady(activePhoneID)
         paused = false
         pendingResume = false
         send("Continue the previous request from the current screen. Describe the phone again; all previous frame references and coordinates are invalid. Check what is already complete before taking more input, and never repeat a possibly completed send, purchase or submission.")
     }
 
-    func send(_ text: String) {
+    func send(_ text: String, leaseID: UUID? = nil) {
         let prompt = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !prompt.isEmpty, !running else { return }
+        guard !prompt.isEmpty, prompt.count <= 16000, !running, historyAvailable else { return }
+        voiceLeaseID = leaseID
+        if provider() == "openai" || provider() == "chatgpt" { sendDirect(prompt); return }
         guard let claude = executableURL() else {
             append(.error, "Claude Code is not installed. Install it from claude.ai/code, then try again.")
             return
@@ -104,7 +233,7 @@ final class AgentChat: ObservableObject {
             append(.error, "Taplyne's server is not running. Turn it on in Settings.")
             return
         }
-        activePhoneID = phoneID()
+        activePhoneID = deviceID ?? phoneID()
         guard prepareInput(activePhoneID) else {
             append(.error, "Automation is paused or under manual control. Press Resume on the phone before starting the agent.")
             return
@@ -112,7 +241,10 @@ final class AgentChat: ObservableObject {
         paused = false
         append(.user, prompt)
 
-        let directory = workDirectoryOverride ?? Self.workDirectory
+        let scope = SHA256.hash(data: Data((deviceID ?? "unselected").utf8)).map { String(format: "%02x", $0) }.joined()
+        let directory = workDirectoryOverride ?? Self.workDirectory.appendingPathComponent(scope, isDirectory: true)
+        do { try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]) }
+        catch { append(.error, "Could not create the agent workspace."); return }
         let configURL = directory.appendingPathComponent("mcp.json")
         let config: [String: Any] = ["mcpServers": ["taplyne": [
             "type": "http", "url": url.absoluteString, "headers": ["X-API-Key": apiKey()]
@@ -126,8 +258,11 @@ final class AgentChat: ObservableObject {
             return
         }
 
+        let context = entries.filter { $0.kind == .user || $0.kind == .assistant }.dropLast().suffix(30)
+            .map { "\($0.kind.rawValue): \($0.text)" }.joined(separator: "\n")
+        let effectivePrompt = context.isEmpty ? prompt : "Previous conversation for context only:\n" + context + "\n\nCurrent request:\n" + prompt
         var arguments = [
-            "-p", prompt,
+            "-p", effectivePrompt, "--no-session-persistence",
             "--output-format", "stream-json", "--verbose",
             "--strict-mcp-config", "--mcp-config", configURL.path,
             "--allowedTools", "mcp__taplyne",
@@ -136,13 +271,7 @@ final class AgentChat: ObservableObject {
             "--append-system-prompt", Self.instructions + "\n\n" + phoneContext()
         ]
         if let model = model(), !model.isEmpty { arguments += ["--model", model] }
-        if let sessionID {
-            arguments += ["--resume", sessionID.uuidString.lowercased()]
-        } else {
-            let id = UUID()
-            sessionID = id
-            arguments += ["--session-id", id.uuidString.lowercased()]
-        }
+
 
         let process = Process()
         process.executableURL = claude
@@ -177,13 +306,17 @@ final class AgentChat: ObservableObject {
                     let tail = errorText.value.split(separator: "\n").suffix(3).joined(separator: "\n")
                     self.append(.error, tail.isEmpty ? "Claude Code exited with status \(status)." : tail)
                 }
-                if self.pendingResume { self.resume() }
+                self.finishWorkflow()
+                self.persist()
+                if self.pendingPrompt != nil { self.continuePending() }
+                else if self.pendingResume { self.resume() }
             }
         }
         do {
             try process.run()
             self.process = process
             running = true
+            persist()
         } catch {
             append(.error, "Could not start Claude Code: \(error.localizedDescription)")
         }
@@ -249,51 +382,44 @@ final class AgentChat: ObservableObject {
         ((event["message"] as? [String: Any])?["content"] as? [[String: Any]]) ?? []
     }
 
-    private func append(_ kind: Entry.Kind, _ text: String, image: NSImage? = nil) {
+    func append(_ kind: Entry.Kind, _ text: String, image: NSImage? = nil) {
         entries.append(Entry(kind: kind, text: text, image: image))
+        persist()
+        if kind == .assistant { onAssistantText(text) }
     }
 
-    static func describeTool(_ name: String, _ input: [String: Any]) -> String {
-        let tool = name.replacingOccurrences(of: "mcp__taplyne__", with: "")
-        func n(_ key: String) -> String { (input[key] as? NSNumber)?.stringValue ?? "?" }
-        switch tool {
-        case "tap", "double_tap", "triple_tap": return "\(tool.replacingOccurrences(of: "_", with: " ").capitalized) at \(n("x")), \(n("y"))"
-        case "long_press": return "Long press at \(n("x")), \(n("y"))"
-        case "flick": return "Flick \(input["direction"] as? String ?? "") from \(n("x")), \(n("y"))"
-        case "drag", "hold_and_drag": return "\(tool == "drag" ? "Drag" : "Hold and drag") \(n("from_x")), \(n("from_y")) → \(n("to_x")), \(n("to_y"))"
-        case "type_text": return "Type \((input["text"] as? String ?? "").count) characters"
-        case "press_key": return "Press \(input["key"] as? String ?? "")"
-        case "press_home": return "Home"
-        case "screenshot": return "Screenshot"
-        case "describe_screen": return "Describe screen"
-        case "tap_label": return "Tap label \(input["label"] as? String ?? "selected element")"
-        case "scroll_to_item": return "Scroll to \(input["label"] as? String ?? "item")"
-        case "fill_field": return "Fill field"
-        case "fill_form": return "Fill form"
-        case "navigate": return "Navigate \(input["command"] as? String ?? "")"
-        case "open_app": return "Open \(input["name"] as? String ?? "app")"
-        case "wait_for_text": return "Wait for text"
-        case "list_phones": return "List phones"
-        case "list_apps": return "List apps"
-        default: return tool
+    /// Streaming prose is visible immediately, but remains transient until the
+    /// Responses API sends response.completed. Cancelled text is neither saved
+    /// nor spoken as a completed assistant reply.
+    func appendAssistantDelta(_ delta: String) {
+        guard !delta.isEmpty else { return }
+        if let id = streamingAssistantID, let index = entries.firstIndex(where: { $0.id == id }) {
+            entries[index].text += delta
+        } else {
+            let entry = Entry(kind: .assistant, text: delta)
+            streamingAssistantID = entry.id
+            entries.append(entry)
         }
     }
 
-    static let instructions = """
-    You are Taplyne's built-in agent. You operate a real, physical iPhone through the taplyne MCP tools.
-    Work in a loop: describe_screen, decide one next action, act with the current frame_id, then inspect its returned screenshot and verification.
-    Coordinates are pixels in the most recent screenshot image. Aim for the center of what you tap.
-    describe_screen provides local OCR labels and bounds, not a native accessibility tree. Prefer tap_label, scroll_to_item and wait_for_text. Duplicate labels require element_id. Coordinates require the current frame_id and cannot be reused after input.
-    Supply expect.text_present, expect.text_absent or expect.screen_changed to verify an intended result. A changed screen alone does not prove the task succeeded. Failed or unverified input must not be replayed automatically.
-    Use fill_field or fill_form for replacement text and exact Unicode readback. Universal Clipboard needs Handoff and the same Apple Account. If readback is unavailable, inspect the field and ask for help instead of pasting again. Never submit a form implicitly.
-    Use navigate and open_app for navigation. A back gesture can fail in an app; inspect its result.
-    On pause, takeover, stale frames or changed control, stop input. Resume begins with describe_screen and checks what is already done.
-    The small gray circle that appears after a tap is the AssistiveTouch pointer; ignore it.
-    To open an app: press_home, look for its icon, or flick left to the App Library and search for it.
-    Text: tap the field, type_text, and inspect exact fragment readback and the returned screen. fill_field verifies a whole replacement value.
-    Safety: stop before sending a message, posting, purchasing, deleting, or submitting anything unless the user explicitly asked for that exact action. Never type a password the user did not give you. If a task needs the user (Face ID, a passcode, a decision), say so and stop.
-    Keep replies short: say what you did and what you saw.
-    """
+    func finishAssistantStream() {
+        guard let id = streamingAssistantID else { return }
+        streamingAssistantID = nil
+        guard let text = entries.first(where: { $0.id == id })?.text, !text.isEmpty else {
+            entries.removeAll { $0.id == id }
+            return
+        }
+        persist()
+        onAssistantText(text)
+    }
+
+    func cancelAssistantStream() {
+        guard let id = streamingAssistantID else { return }
+        streamingAssistantID = nil
+        entries.removeAll { $0.id == id }
+    }
+
+
 }
 
 /// Collects a child's stderr from the pipe's reader thread.

@@ -83,7 +83,7 @@ struct PhoneDetailView: View {
         HSplitView {
             stage
             if showAgent {
-                ChatView(chat: model.chat, phone: phone)
+                ChatView(chat: model.chat, phone: phone, realtime: model.realtime, speech: model.speech)
                     .frame(minWidth: 300, idealWidth: 360, maxWidth: 560)
                     .background(Color(nsColor: .windowBackgroundColor))
                     .transition(.move(edge: .trailing).combined(with: .opacity))
@@ -153,7 +153,7 @@ struct PhoneDetailView: View {
     // MARK: - Stage
 
     private var phoneStage: some View {
-        PhoneScreenView(session: phone.stream?.session, phoneSize: phone.screenSize) { event in
+        PhoneScreenView(session: phone.stream?.session, remoteImage: phone.remoteImage?.image, phoneSize: phone.screenSize) { event in
             updatePreview(event)
             handle(event)
         }
@@ -171,7 +171,7 @@ struct PhoneDetailView: View {
 
     /// Covers the black screen with a reason when there is no picture yet.
     @ViewBuilder private var screenPlaceholder: some View {
-        if phone.stream == nil || phone.readiness == .locked || phone.readiness == .waitingForScreen {
+        if (phone.stream == nil && phone.remoteImage == nil) || phone.readiness == .locked || phone.readiness == .waitingForScreen {
             VStack(spacing: 10) {
                 Image(systemName: phone.readiness == .ready ? "iphone" : phone.readiness.symbol)
                     .font(.system(size: 30, weight: .light))
@@ -437,7 +437,7 @@ struct PhoneDetailView: View {
         switch event {
         case let .down(p):
             if phone.controlState.mode == .automatic { phone.control(.takeover) }
-            manualImage = phone.stream?.latestImage()
+            manualImage = phone.currentImage
             dragStart = p
         case .moved:
             break
@@ -695,9 +695,21 @@ struct ReadinessBanner: View {
         Self.steps.firstIndex { $0.0 == phone.readiness } ?? Self.steps.count
     }
 
+    private var remote: Bool {
+        phone.config.relayEnabled == true || phone.config.remoteEndpoint != nil
+    }
+
+    private var readinessMessage: String {
+        guard remote else { return phone.readiness.reason ?? "" }
+        guard phone.config.relayEnabled == true else {
+            return "Waiting for the private runner. Keep the device unlocked and online, and check that its runner is active."
+        }
+        return "Waiting for the remote device. Keep it unlocked and online. If the runner has stopped, reconnect by USB and start it again in Remote devices."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            if phone.readiness != .unplugged {
+            if phone.readiness != .unplugged && !remote {
                 stepper
                 Divider()
             }
@@ -709,7 +721,7 @@ struct ReadinessBanner: View {
                     .background(Circle().fill(phone.readiness == .unplugged ? Color.gray.gradient : Color.orange.gradient))
                     .contentTransition(.symbolEffect(.replace))
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(phone.readiness.reason ?? "")
+                    Text(readinessMessage)
                         .font(.callout)
                         .fixedSize(horizontal: false, vertical: true)
                         .contentTransition(.opacity)
@@ -792,9 +804,11 @@ struct ReadinessBanner: View {
             Button("Allow Camera") { Task { _ = await model.capture.requestAccess() } }
                 .buttonStyle(.borderedProminent)
         case .waitingForScreen:
-            HStack {
-                Button("Restart iPhone…", action: onRestart)
-                Text("if the screen never appears.").font(.caption).foregroundStyle(.secondary)
+            if !remote {
+                HStack {
+                    Button("Restart iPhone…", action: onRestart)
+                    Text("if the screen never appears.").font(.caption).foregroundStyle(.secondary)
+                }
             }
         case .needsBluetooth:
             BluetoothStep(phone: phone, bluetooth: model.bluetooth)

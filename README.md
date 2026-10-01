@@ -1,23 +1,28 @@
 # Taplyne
 
-Give your AI a real iPhone. Taplyne is a free, open-source Mac app that lets an agent see, tap, scroll and type on an iPhone connected to your Mac.
+Give your AI a real iPhone or iPad. Taplyne is a free, open-source Mac app for screen control, agent conversations and live voice, with USB and optional remote modes.
 
-[Download for Mac](https://github.com/isaachorowitz/taplyne-mac/releases/latest/download/Taplyne.dmg) · [Source](https://github.com/isaachorowitz/taplyne-mac) · [Release notes](https://github.com/isaachorowitz/taplyne-mac/releases)
+[Download for Mac](https://github.com/isaachorowitz/TapLyne-App/releases/latest/download/Taplyne.dmg) · [Source](https://github.com/isaachorowitz/TapLyne-App) · [Getting started](docs/GETTING-STARTED.md) · [Release notes](https://github.com/isaachorowitz/TapLyne-App/releases)
 
-USB carries the screen. Bluetooth carries mouse and keyboard input. AssistiveTouch turns that input into taps. Nothing is installed on the iPhone, and there is no cloud relay or Taplyne account.
+In USB mode, USB carries the screen and Bluetooth carries mouse and keyboard input. AssistiveTouch turns that input into taps, with nothing installed on the iPhone. Optional remote mode installs a signed XCTest runner and connects through your encrypted relay. Neither mode requires a Taplyne account.
 
 This is an early release. It uses private macOS Bluetooth APIs, and compatibility varies across device and OS versions. The capture and input architecture has no Developer Mode requirement; operation with Developer Mode disabled still needs physical-device validation.
 
-## Install
+## Start with USB
+
+You need a Mac with macOS 15 or later, an unlocked iPhone or iPad, and a USB data cable. The Mac download supports Apple silicon and Intel. USB mode needs no iPhone app or Apple developer signing. Remote mode has additional setup, described in [the getting-started guide](docs/GETTING-STARTED.md#remote-control-and-phone-voice).
+
 
 1. Download the DMG, open it, and drag Taplyne to Applications.
-2. Install the USB device helper: `brew install uv && uv tool install pymobiledevice3`.
+2. With [Homebrew](https://brew.sh) installed, run `brew install uv && uv tool install pymobiledevice3` in Terminal.
 3. Plug in an unlocked iPhone with a USB data cable. Tap **Trust** on the phone if asked.
-4. Open Taplyne and follow the setup card: allow Camera access, pair the Mac from the iPhone's Bluetooth settings, enable AssistiveTouch, and calibrate the pointer.
+4. Open Taplyne and follow its setup card: allow Camera access, prepare Bluetooth pairing, select the Mac in the phone's Bluetooth settings, enable AssistiveTouch, and calibrate the pointer.
+5. Open **Settings > Agent** and choose your provider. For OpenAI, choose **OpenAI API key (BYOK)**, save your own key and click **Validate saved key**. Or use an existing Claude Code login.
+6. Select the phone and ask **“Describe the screen without tapping anything.”** Check that the reply matches the phone, then try **“Go Home.”**
 
-The Mac needs macOS 15 or later. The release supports Apple silicon and Intel. Camera permission enables the USB screen capture device; Taplyne does not use the Mac's camera. Leave the iPhone unlocked while it works.
+Camera permission enables the USB screen capture device; Taplyne does not use the Mac's camera. Leave the phone unlocked while it works. Use **Pause** or **Take over** whenever you want to intervene.
 
-For the built-in chat, install [Claude Code](https://code.claude.com/docs/en/overview) and complete its login. Other agents can connect through MCP or REST. AI provider accounts and charges are separate from Taplyne.
+Claude Code users should install [Claude Code](https://code.claude.com/docs/en/overview) and complete its login before selecting it in Settings. Other agents can connect through MCP or REST. Taplyne is free; AI provider accounts and usage charges are separate. Live AI voice requires an OpenAI API key even when another provider handles reasoning.
 
 Plain English uses Bluetooth keyboard input and requires an English hardware keyboard layout on the iPhone. Supply a visible-text result condition to verify it. Hebrew, emoji and multiline text use Universal Clipboard, which requires Handoff and the same Apple Account on the Mac and iPhone. Newlines and tabs are never converted to keypresses that could submit a form. Clipboard availability and field readback must be checked on your devices. In the current physical-phone checks, English input passed; Hebrew and emoji paste failed even with Handoff enabled. Treat Unicode paste as experimental and inspect the field before continuing.
 
@@ -121,7 +126,7 @@ Taplyne exposes a separate transport through MCP and REST. An agent can use Tapl
 
 ## Privacy and security
 
-Screen capture, pointer feedback and OCR run locally. Taplyne has no built-in analytics or cloud screen relay. An agent can transmit screen content to its AI provider. The built-in chat uses Claude Code and keeps conversation data in Claude Code's local storage. Phone settings and calibration live in Application Support; the server key lives in the macOS Keychain.
+Screen capture, pointer feedback and OCR run locally. Taplyne has no built-in analytics. Optional remote mode forwards encrypted screen and control traffic through your relay. An agent can transmit screen content to its AI provider. Conversations and workflow history are encrypted on the Mac; phone settings and calibration live in Application Support. Server, provider and pairing credentials live in Keychain.
 
 Clipboard transactions preserve rich content and reject concurrent clipboard changes before pasting. Original clipboard content is restored only while Taplyne still owns the clipboard; a subsequent phone or user copy is preserved. Universal Clipboard is a shared OS facility: text readback cannot establish which device produced a concurrent clipboard update. Inspect uncertain outcomes, especially on secure fields.
 
@@ -129,11 +134,11 @@ Use the phone's own unlock, password and authentication interfaces. Avoid exposi
 
 ## Build from source
 
-Install Xcode and XcodeGen (`brew install xcodegen`). No developer account or personal signing certificate is needed for a local ad hoc build.
+Install Xcode and XcodeGen (`brew install xcodegen`). No developer account or personal signing certificate is needed for a local ad hoc Mac build. Installing the iOS companion or remote runner requires Apple signing.
 
 ```sh
-git clone https://github.com/isaachorowitz/taplyne-mac.git
-cd taplyne-mac
+git clone https://github.com/isaachorowitz/TapLyne-App.git
+cd TapLyne-App
 scripts/build.sh
 open build/Taplyne.app
 ```
@@ -149,7 +154,7 @@ bash scripts/test-agent.sh
 
 The server tests cover stale and cross-phone frames, queue cancellation, ambiguity, result verification, bounded scrolling, form uncertainty, REST, MCP and real OCR fixtures. Input tests cover clipboard preservation and cancellation releasing held reports. These checks do not establish physical-device compatibility.
 
-Debug preview: `TAPLYNE_PREVIEW=ready build/Taplyne.app/Contents/MacOS/Taplyne`. Available states are `setup`, `ready`, `empty`, `calibrating` and `agent`. Preview starts no capture, server or Bluetooth and does not read or write the server key. It shares preferences with installed copies, so leave Server settings alone.
+Debug preview: `TAPLYNE_PREVIEW=ready build/Taplyne.app/Contents/MacOS/Taplyne`. Available states are `setup`, `ready`, `empty`, `calibrating` and `agent`. These visual preview states start no capture, server or Bluetooth and do not read or write the server key. Dedicated remote QA preview hooks are separate and can start connections when explicitly configured.
 
 The one-page website lives in `site/`. Run `npm ci --prefix site`, `npm run check --prefix site`, and `npm run dev --prefix site`. It serves static files through Cloudflare Workers. Fonts are self-hosted with their licenses.
 
@@ -166,3 +171,34 @@ The one-page website lives in `site/`. Run `npm ci --prefix site`, `npm run chec
 ## License and credits
 
 Taplyne is licensed under **AGPL-3.0-only**. The Bluetooth HID stack includes work from [jqssun/darwin-bt-remote](https://github.com/jqssun/darwin-bt-remote), under the same license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [LICENSE](LICENSE). This project is independent of TapKit and Apple.
+
+## Conversations, voice and companion
+
+Taplyne includes encrypted conversations per device, live steering, saved workflows with `{{inputs}}`, and a recent-run log. Workflow results report the agent's evidence; finishing a run is not proof every requested action succeeded. An interrupted run is never replayed automatically.
+
+Settings > Agent lets you choose your own OpenAI API key, Claude Code login or Sign in with ChatGPT. New installations initially select Claude Code; choose OpenAI explicitly to use an API key. Live ChatGPT sign-in still needs acceptance testing; use OpenAI or an existing Claude Code login for the verified setup path. Taplyne stores API keys in the Mac Keychain, can validate or remove them from Settings, and never bundles a provider key. Your requests and screen evidence go to the provider you select.
+
+Sign in with ChatGPT uses OpenAI's public-client dynamic registration, PKCE, a stable installation host ID, and a separate Keychain credential record for each account or workspace. Taplyne validates the returned identity, keeps account registrations isolated, serializes rotating-token refreshes, and pins each agent run to the account it started with. It lists the models eligible for the active account and treats only a terminal `response.completed` event as success. It does not read credentials from ChatGPT or another application.
+
+Native dictation and speech work with any reasoning provider. Live AI voice streams microphone audio to OpenAI Realtime and uses the primary OpenAI API key by default, even when ChatGPT or Claude Code handles reasoning. Settings can store a separate voice-only key when voice should bill another OpenAI project. Live replies use English by default and change language when you explicitly request it; spoken input remains multilingual. Voice interruption cancels the current response and pauses device work. Companion voice work uses a renewable lease so a lost connection pauses work on the Mac. Already delivered actions cannot be undone. Spoken replies, interruption and a voice-driven Home command followed by a background reply passed on a physical iPad, including unplugged use through a cellular hotspot. External audio route changes and echo behavior still need separate hardware acceptance.
+
+Build the iPhone/iPad companion with XcodeGen and Xcode:
+
+```sh
+bash scripts/build-companion.sh simulator <simulator-udid>
+TAPLYNE_DEVELOPMENT_TEAM=<your-team-id> bash scripts/build-companion.sh device <device-udid>
+```
+
+The companion is built and installed with Xcode; there is no App Store or TestFlight download in this release. See the [step-by-step setup](docs/GETTING-STARTED.md#install-the-companion). The simulator build includes the entitlements required for Keychain. A physical build needs an Apple development signing profile for `agency.ziplyne.taplyne.companion`. The project includes both iPhone and iPad layouts. Store distribution is not included in this local build.
+
+In Mac Settings > Phone & iPad, select the controlled device, enter the Mac's reachable address, create a companion key, and scan its QR code in the companion. Check the address and tap Connect. Manual address/key entry remains available. The companion key controls that device only and differs from an ordinary MCP key. A new key revokes its predecessor. Histories stay on the Mac; the companion stores its pairing credential in Keychain.
+
+## Remote device setup
+
+Settings > Remote device installs and pairs the signed XCTest runner for the selected USB device. Enter your Apple Developer team ID, a deployed relay's `wss://` address, and its enrollment token. The app bundles the setup tools, fetches the pinned WebDriverAgent source, builds and signs it with Xcode, checks signature and profile expiry, installs it, stages its pairing privately, and launches it in the background through Apple's RemoteXPC services. Xcode must have signing access, `uv` must be installed, and the device needs Developer Mode and an unlocked screen. The launcher closes its Mac connection after startup. Reinstall and renew before the displayed profile expiry. The private runner endpoint option remains available for an existing trusted-network setup.
+
+The Mac, runner and companion connect outward to the included [Relay service](Relay/README.md). Each device has separate runner and conversation channels with independent random credentials, authenticated encrypted handshakes, AES-GCM encryption and replay rejection. The runner's HTTP and screen-stream listeners bind to loopback. No public Mac port or device VPN is needed for the relay traffic. The relay requires an authorized deployment with a domain and TLS; no hosted relay is provisioned by this repository.
+
+After runner setup, open Settings > Phone & iPad, load its relay pairing code and scan it in the native companion. Text and voice can use the conversation relay while the runner independently handles device control. Pairing revocation stops both Mac endpoints and invalidates the companion key. Connection loss fails pending requests and pauses automation; reconnection does not replay actions. The Mac must remain running.
+
+The background runner passed fresh capture and Home control on a physical iPad after USB removal and after switching to an iPhone's cellular hotspot while the Mac stayed on its existing Wi-Fi. The companion also sent a screen-reading request and displayed the completed OpenAI reply over that cellular connection. Keep the device unlocked and the Mac online. If iOS terminates the runner or the device restarts, reconnect locally to launch it again; remote recovery from that state is not established. The explicit tethered `xcodebuild` fallback requires its Mac connection to remain attached. Detailed acceptance results and device versions are in [the verification matrix](docs/plans/2026-10-01-feature-parity.md).

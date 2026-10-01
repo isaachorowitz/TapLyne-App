@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#05070d">
   <meta name="color-scheme" content="dark">
   <title>TapLyne · Give your AI a real iPhone</title>
-  <meta name="description" content="TapLyne is a free, open-source Mac app that lets an AI agent see, tap, scroll and type on the iPhone plugged into your Mac. Screen in over USB, taps out over Bluetooth, nothing installed on the phone.">
+  <meta name="description" content="TapLyne 0.3.0 is a free, open-source Mac app for AI control of your iPhone. Start with USB and Bluetooth, or set up encrypted remote control and a voice companion for iPhone and iPad.">
   <meta property="og:type" content="website">
   <meta property="og:title" content="TapLyne · Give your AI a real iPhone">
   <meta property="og:description" content="A free, open-source Mac app that lets an AI agent see, tap, scroll and type on your real iPhone. Download for Mac.">
@@ -17,6 +17,7 @@
   <link rel="preload" href="/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="/style.css">
   <script src="/demo.js" defer></script>
+  <script src="/reveal.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -30,27 +31,30 @@
     <header class="bar">
       <a class="brand" href="/" aria-label="TapLyne home"><img src="/logo.png" width="28" height="28" alt="">TapLyne</a>
       <nav class="bar-nav" aria-label="Main">
-        <a class="bar-link" href="https://github.com/isaachorowitz/taplyne-mac#readme">Docs</a>
-        <a class="bar-link" href="https://github.com/isaachorowitz/taplyne-mac/releases">Releases</a>
-        <a class="bar-gh" href="https://github.com/isaachorowitz/taplyne-mac" aria-label="TapLyne on GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span>GitHub</span></a>
+        <a class="bar-link" href="#how">How it works</a>
+        <a class="bar-link" href="#features">Features</a>
+        <a class="bar-link" href="#privacy">Privacy</a>
+        <a class="bar-link" href="#faq">FAQ</a>
+        <a class="bar-gh" href="https://github.com/isaachorowitz/TapLyne-App" aria-label="TapLyne on GitHub"><svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg><span>GitHub</span></a>
       </nav>
     </header>
 
-    <main id="main" class="hero">
+    <main id="main">
+    <section class="hero" aria-label="Introduction">
       <div class="copy">
         <h1 class="headline"><span class="line">Give your AI</span> <span class="line">a real <span class="headline-accent">iPhone</span>.</span></h1>
-        <p class="lede">TapLyne lets an AI agent <strong>see, tap, scroll and type</strong> on the iPhone plugged into your Mac. The screen comes in over USB. The taps go out over Bluetooth. Nothing gets installed on the phone.</p>
+        <p class="lede">TapLyne lets an AI agent <strong>see, tap, scroll and type</strong> on your iPhone. Start with a USB cable and Bluetooth, with nothing installed on the phone. Add the optional companion and encrypted remote setup for text and voice away from your Mac.</p>
         <div class="actions">
-          <a class="btn btn-primary" href="https://github.com/isaachorowitz/taplyne-mac/releases/latest/download/Taplyne.dmg">
+          <a class="btn btn-primary" href="https://github.com/isaachorowitz/TapLyne-App/releases/latest/download/Taplyne.dmg">
             <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16.5h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
             <span>Download for Mac</span>
           </a>
-          <a class="btn btn-ghost" href="https://github.com/isaachorowitz/taplyne-mac">
+          <a class="btn btn-ghost" href="https://github.com/isaachorowitz/TapLyne-App">
             <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.4 7.4 0 0 1 4 0c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48l-.01 2.2c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
             <span>View on GitHub</span>
           </a>
         </div>
-        <p class="meta"><span>Free and open source. macOS 15 or later, Apple silicon and Intel.</span> <span>Works with Claude Code, any MCP client, or REST.</span></p>
+        <p class="meta"><span>Version 0.3.0. Free and open source. macOS 15 or later, Apple silicon and Intel.</span> <span>Works with Claude Code, any MCP client, or REST.</span></p>
       </div>
 
       <figure class="stage" id="stage" data-flow="idle" aria-label="Illustrated demo of TapLyne: an AI agent on the Mac opens Settings and then General on a connected iPhone. This is an animation, not a connected phone.">
@@ -177,10 +181,441 @@
       <ol class="rail" aria-label="How it connects">
         <li><b>USB carries the screen.</b><span>Captured locally on your Mac.</span></li>
         <li><b>Bluetooth carries the taps.</b><span>AssistiveTouch turns them into touches.</span></li>
-        <li><b>Nothing on the iPhone.</b><span>No app, no jailbreak.</span></li>
+        <li><b>No phone app in USB mode.</b><span>No jailbreak required.</span></li>
         <li><b>You stay in charge.</b><span>Pause or take over any time.</span></li>
       </ol>
+    </section>
+
+      <!-- ============ What it is ============ -->
+      <section class="sec sec-intro" id="what" aria-labelledby="what-h">
+        <p class="eyebrow">In one sentence</p>
+        <h2 id="what-h" class="big-statement">You tell your AI what you want done on your iPhone. <span class="dim">It looks at the screen, taps, types and scrolls until it is done. You watch, and you can stop it any time.</span></h2>
+        <div class="analogy">
+          <div class="analogy-item"><span class="analogy-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/></svg></span><b>It sees</b><span>a live picture of your phone screen</span></div>
+          <div class="analogy-item"><span class="analogy-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3.5v17M8.5 6a3 3 0 0 0-4 3.5 3.2 3.2 0 0 0 0 5A3 3 0 0 0 8.5 18M15.5 6a3 3 0 0 1 4 3.5 3.2 3.2 0 0 1 0 5 3 3 0 0 1-4 3.5"/></svg></span><b>It thinks</b><span>using the AI you already pay for</span></div>
+          <div class="analogy-item"><span class="analogy-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="7.5" opacity=".5"/></svg></span><b>It acts</b><span>with real taps, like a finger would</span></div>
+          <div class="analogy-item"><span class="analogy-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg></span><b>It checks</b><span>that each step actually worked</span></div>
+        </div>
+      </section>
+
+      <!-- ============ How it works ============ -->
+      <section class="sec" id="how" aria-labelledby="how-h">
+        <header class="sec-head">
+          <p class="eyebrow">How it works</p>
+          <h2 id="how-h">Start with the cable.</h2>
+          <p class="sec-sub">USB mode needs no iPhone app or jailbreak. Follow the <a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/docs/GETTING-STARTED.md">setup guide</a> for permissions, pairing and your first request.</p>
+        </header>
+        <ol class="steps3">
+          <li class="card step3">
+            <span class="num">1</span>
+            <div class="art art-plug" aria-hidden="true">
+              <span class="mini-mac"></span><span class="mini-cable"></span><span class="mini-phone"></span>
+            </div>
+            <h3>Plug in your iPhone</h3>
+            <p>Use a normal USB cable. Your Mac now sees the phone screen live.</p>
+          </li>
+          <li class="card step3">
+            <span class="num">2</span>
+            <div class="art art-bt" aria-hidden="true">
+              <span class="bt-ring"></span><span class="bt-ring r2"></span><span class="bt-glyph">ᛒ</span>
+            </div>
+            <h3>Pair over Bluetooth</h3>
+            <p>Your Mac acts like a mouse and keyboard for the phone. The setup card walks you through it.</p>
+          </li>
+          <li class="card step3">
+            <span class="num">3</span>
+            <div class="art art-ask" aria-hidden="true">
+              <span class="bubble">Turn on Dark Mode</span><span class="bubble bubble-ai">Done. Dark Mode is on.</span>
+            </div>
+            <h3>Ask in plain English</h3>
+            <p>Type or speak a request. Your AI does it on the real phone while you watch.</p>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============ Everything a finger can do ============ -->
+      <section class="sec" id="features" aria-labelledby="hands-h">
+        <header class="sec-head">
+          <p class="eyebrow">Hands</p>
+          <h2 id="hands-h">The touches your AI needs.</h2>
+          <p class="sec-sub">Taps, drags, scrolling and typing, plus shortcuts for common tasks.</p>
+        </header>
+        <div class="gestures">
+          <div class="g"><span class="g-art g-tap" aria-hidden="true"><i></i></span><b>Tap</b></div>
+          <div class="g"><span class="g-art g-double" aria-hidden="true"><i></i></span><b>Double tap</b></div>
+          <div class="g"><span class="g-art g-triple" aria-hidden="true"><i></i></span><b>Triple tap</b></div>
+          <div class="g"><span class="g-art g-hold" aria-hidden="true"><i></i></span><b>Press and hold</b></div>
+          <div class="g"><span class="g-art g-flick" aria-hidden="true"><i></i></span><b>Swipe and scroll</b></div>
+          <div class="g"><span class="g-art g-drag" aria-hidden="true"><i></i></span><b>Drag</b></div>
+          <div class="g"><span class="g-art g-holddrag" aria-hidden="true"><i></i></span><b>Hold and drag</b></div>
+          <div class="g"><span class="g-art g-type" aria-hidden="true"><i>Hello</i></span><b>Type text</b></div>
+        </div>
+        <div class="grid3">
+          <article class="card feat">
+            <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 7h10M4 12h16M4 17h7" /><circle cx="18" cy="7" r="2.2"/></svg></span>
+            <h3>Tap things by name</h3>
+            <p>Say “tap Settings” and it finds the word on screen and taps it. No coordinates needed.</p>
+          </article>
+          <article class="card feat">
+            <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v16M7 15l5 5 5-5"/></svg></span>
+            <h3>Scroll until found</h3>
+            <p>It scrolls a list until the item shows up, then stops. It never scrolls forever.</p>
+          </article>
+          <article class="card feat">
+            <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="4" rx="1.5"/><rect x="3.5" y="12" width="17" height="4" rx="1.5"/><path d="M6 19.5h6"/></svg></span>
+            <h3>Fill in forms</h3>
+            <p>It works through fields one by one and checks their values when readback is available. Review the result before asking the agent to submit.</p>
+          </article>
+          <article class="card feat">
+            <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="3"/><path d="M10 17.5h4"/></svg></span>
+            <h3>Go anywhere</h3>
+            <p>Home, Back, the app switcher, notifications and Control Center are one command each.</p>
+          </article>
+          <article class="card feat">
+            <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></svg></span>
+            <h3>Open an app by name</h3>
+            <p>It finds an app on the Home Screen or in search, then opens a clear, unique match.</p>
+          </article>
+          <article class="card feat">
+            <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></svg></span>
+            <h3>Wait for the right moment</h3>
+            <p>It can wait for a word to appear, like “Sent” or “Loaded”, before moving on.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ Eyes ============ -->
+      <section class="sec split" aria-labelledby="eyes-h">
+        <div class="split-copy">
+          <p class="eyebrow">Eyes</p>
+          <h2 id="eyes-h">It reads the screen, right on your Mac.</h2>
+          <p class="sec-sub">Actions return a fresh picture and the text the screen reader recognizes, with positions for each label.</p>
+          <ul class="ticks">
+            <li><b>Aims like a person.</b> It watches the pointer and corrects its aim before tapping.</li>
+            <li><b>Finds app icons.</b> A detected icon grid connects app captions to their tap targets.</li>
+            <li><b>Never acts on an old picture.</b> If the screen moved, it looks again first.</li>
+            <li><b>English and Hebrew.</b> English uses Apple’s built‑in reading. Hebrew is an optional download.</li>
+          </ul>
+        </div>
+        <div class="split-art" aria-hidden="true">
+          <div class="ocr-demo">
+            <div class="ocr-phone">
+              <p class="ocr-row"><span class="hl">Wi‑Fi</span><em>Home</em></p>
+              <p class="ocr-row"><span class="hl">Bluetooth</span><em>On</em></p>
+              <p class="ocr-row"><span class="hl hl-ok">General</span></p>
+              <p class="ocr-row"><span class="hl">Accessibility</span></p>
+              <p class="ocr-row"><span class="hl">Notifications</span></p>
+              <p class="ocr-row"><span class="hl">Privacy &amp; Security</span></p>
+            </div>
+            <pre class="ocr-json"><code>{ "frame_id": "f_3a9c",
+  "elements": [
+    { "text": "Wi‑Fi",   "box": [48,212] },
+    { "text": "General", "box": [48,410] },
+    …
+  ] }</code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Verified ============ -->
+      <section class="sec" id="trust" aria-labelledby="ver-h">
+        <header class="sec-head">
+          <p class="eyebrow">Honest results</p>
+          <h2 id="ver-h">It tells you when it’s not sure.</h2>
+          <p class="sec-sub">Ask for an expected result and TapLyne checks the screen. Each result carries one of three statuses.</p>
+        </header>
+        <div class="grid3 status-grid">
+          <article class="card status s-ok">
+            <span class="chip">verified</span>
+            <h3>It worked.</h3>
+            <p>The thing you expected is on screen. Example: tap “Settings”, expect “General”. It’s there.</p>
+          </article>
+          <article class="card status s-warn">
+            <span class="chip">unverified</span>
+            <h3>Maybe. Look first.</h3>
+            <p>The tap went through, but the result can’t be proven yet. It checks before going on.</p>
+          </article>
+          <article class="card status s-bad">
+            <span class="chip">failed</span>
+            <h3>It didn’t work.</h3>
+            <p>It says so, and tells you whether the tap reached the phone at all.</p>
+          </article>
+        </div>
+        <p class="callout"><b>Check before retrying:</b> results report whether input reached the device. Inspect an uncertain send, purchase or submission before asking the agent to try again.</p>
+      </section>
+
+      <!-- ============ Control ============ -->
+      <section class="sec split split-rev" aria-labelledby="ctl-h">
+        <div class="split-copy">
+          <p class="eyebrow">You’re in charge</p>
+          <h2 id="ctl-h">Three buttons. Always there.</h2>
+          <p class="sec-sub">The AI never has the last word on your phone. You do.</p>
+        </div>
+        <div class="split-art">
+          <div class="btn-stack">
+            <div class="cbtn"><span class="cbtn-key">Pause</span><span>Stops all automatic taps right now.</span></div>
+            <div class="cbtn"><span class="cbtn-key">Take over</span><span>Cancels everything queued. The phone is yours.</span></div>
+            <div class="cbtn"><span class="cbtn-key cbtn-go">Resume</span><span>The AI looks again, checks what changed, then carries on.</span></div>
+          </div>
+          <p class="fine">You can resume from the Mac or paired companion. The AI’s phone tools can pause or stop, but cannot resume control.</p>
+        </div>
+      </section>
+
+      <!-- ============ Brains ============ -->
+      <section class="sec" id="ai" aria-labelledby="brain-h">
+        <header class="sec-head">
+          <p class="eyebrow">Brains <span class="badge">New</span></p>
+          <h2 id="brain-h">Use the AI you already have.</h2>
+          <p class="sec-sub">Chat right inside the app. Pick who does the thinking.</p>
+        </header>
+        <div class="grid3">
+          <article class="card brain">
+            <span class="brain-logo b-openai" aria-hidden="true">API</span>
+            <h3>Your OpenAI key</h3>
+            <p>Paste a key once. It’s checked, stored in your Mac’s Keychain, and you can remove it any time.</p>
+          </article>
+          <article class="card brain">
+            <span class="brain-logo b-chatgpt" aria-hidden="true">GPT</span>
+            <h3>Sign in with ChatGPT</h3>
+            <p>Experimental in 0.3.0. Live sign-in still needs validation. Start with an OpenAI key or an existing Claude Code login for the verified setup path.</p>
+          </article>
+          <article class="card brain">
+            <span class="brain-logo b-claude" aria-hidden="true">CC</span>
+            <h3>Claude Code</h3>
+            <p>Use your existing Claude Code login. The built-in agent receives tools for the selected phone.</p>
+          </article>
+        </div>
+        <p class="fine center">No shared keys are bundled. Your requests go only to the provider you choose.</p>
+      </section>
+
+      <!-- ============ Voice ============ -->
+      <section class="sec split" aria-labelledby="voice-h">
+        <div class="split-copy">
+          <p class="eyebrow">Voice <span class="badge">New</span></p>
+          <h2 id="voice-h">Just say it.</h2>
+          <p class="sec-sub">Talk to your phone’s new assistant like you would to a person.</p>
+          <ul class="ticks">
+            <li><b>Dictation.</b> Speak instead of typing. Works with any AI.</li>
+            <li><b>Spoken replies.</b> It tells you out loud when it’s done.</li>
+            <li><b>Live AI voice.</b> A real back‑and‑forth conversation, powered by OpenAI.</li>
+            <li><b>Interrupt any time.</b> Start talking and it stops, and the phone pauses too.</li>
+          </ul>
+          <p class="fine">Live voice requires your own OpenAI API key. Spoken commands and background replies passed on a physical iPad over a cellular hotspot.</p>
+        </div>
+        <div class="split-art" aria-hidden="true">
+          <div class="voice-card">
+            <div class="wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            <p class="v-you">“Go Home, then tell me what you can see.”</p>
+            <p class="v-ai">You’re on the Home Screen. I can see your apps.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Conversations & workflows ============ -->
+      <section class="sec" aria-labelledby="flow-h">
+        <header class="sec-head">
+          <p class="eyebrow">Memory <span class="badge">New</span></p>
+          <h2 id="flow-h">Do it once. Run it forever.</h2>
+          <p class="sec-sub">Save the jobs you repeat. Fill in the blanks next time.</p>
+        </header>
+        <div class="grid2">
+          <article class="card wf">
+            <div class="wf-demo" aria-hidden="true">
+              <p class="wf-title">Order my usual coffee</p>
+              <p class="wf-prompt">Open the coffee app, order a <span class="slot">{{size}}</span> <span class="slot">{{drink}}</span> for pickup at <span class="slot">{{store}}</span>.</p>
+              <div class="wf-inputs"><span><em>size</em>Large</span><span><em>drink</em>Oat latte</span><span><em>store</em>Main St</span></div>
+            </div>
+            <h3>Saved workflows</h3>
+            <p>Turn any request into a reusable recipe with blanks to fill in. A recent‑runs log shows how each one went.</p>
+          </article>
+          <div class="stack">
+            <article class="card feat">
+              <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 6h14v9H9l-4 3z"/></svg></span>
+              <h3>A conversation per phone</h3>
+              <p>Each phone keeps its own chat history, encrypted on your Mac.</p>
+            </article>
+            <article class="card feat">
+              <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 12h12M12 6l6 6-6 6"/></svg></span>
+              <h3>Steer it mid‑task</h3>
+              <p>Change your mind halfway? Send a new message and it adjusts while it works.</p>
+            </article>
+            <article class="card feat">
+              <span class="feat-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 4v8l4 4"/><circle cx="12" cy="12" r="8.5"/></svg></span>
+              <h3>Never replays by surprise</h3>
+              <p>If a run gets cut off, it waits for you. It won’t redo it on its own.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Anywhere ============ -->
+      <section class="sec" id="anywhere" aria-labelledby="any-h">
+        <header class="sec-head">
+          <p class="eyebrow">Anywhere <span class="badge">New</span></p>
+          <h2 id="any-h">Leave the cable. Keep the control.</h2>
+          <p class="sec-sub">Optional companion and remote control in 0.3.0. Your Mac stays online while you use the phone elsewhere.</p>
+        </header>
+        <div class="grid2">
+          <article class="card big">
+            <div class="comp-art" aria-hidden="true">
+              <div class="comp-phone">
+                <p class="comp-head">TapLyne</p>
+                <p class="comp-msg comp-me">Check if my package shipped</p>
+                <p class="comp-msg">It shipped today. Arriving Friday.</p>
+                <div class="comp-bar"><span>Message</span><i></i></div>
+              </div>
+              <div class="qr"><i></i><i></i><i></i></div>
+            </div>
+            <h3>Companion app for iPhone and iPad</h3>
+            <p>Chat with your Mac’s AI by text or voice. Pair with its QR code or pairing link. Each pairing can reach only the device you picked.</p>
+            <p class="fine">Build and install the companion with Xcode. There is no App Store download in 0.3.0. <a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/docs/GETTING-STARTED.md#install-the-companion">Companion setup</a>.</p>
+          </article>
+          <article class="card big">
+            <div class="relay-art" aria-hidden="true">
+              <span class="node">Mac</span>
+              <span class="link"><i></i></span>
+              <span class="node node-lock">Relay<small>encrypted</small></span>
+              <span class="link"><i></i></span>
+              <span class="node">iPhone</span>
+            </div>
+            <h3>Remote mode, even on cellular</h3>
+            <p>After advanced setup, a signed runner keeps screen capture and control connected through your encrypted relay. Unplugged control and background voice passed on a physical iPad using an iPhone’s cellular hotspot.</p>
+            <p class="fine">Requires Xcode, Apple development signing, Developer Mode, and a self-hosted WSS relay. Keep the device unlocked and Mac online. Reconnect locally if the runner is killed or the device reboots. <a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/docs/GETTING-STARTED.md">Remote setup guide</a>.</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ============ Developers ============ -->
+      <section class="sec split" id="developers" aria-labelledby="dev-h">
+        <div class="split-copy">
+          <p class="eyebrow">For builders</p>
+          <h2 id="dev-h">Plug in any AI agent.</h2>
+          <p class="sec-sub">TapLyne runs a small server on your Mac. Anything that speaks MCP or plain HTTP can drive the phone.</p>
+          <ul class="ticks">
+            <li><b>MCP.</b> One command connects Claude Code, Cursor or any MCP client.</li>
+            <li><b>REST API.</b> Simple routes with async jobs for long actions.</li>
+            <li><b>Live dashboard.</b> Watch the phone in your browser.</li>
+            <li><b>Works beside Argent</b> for simulator and app testing.</li>
+            <li><b>Agent skill included.</b> Teaches your agent the look, act, check loop.</li>
+          </ul>
+        </div>
+        <div class="split-art">
+          <div class="term" role="img" aria-label="Terminal command that connects Claude Code to TapLyne">
+            <div class="term-bar"><i></i><i></i><i></i></div>
+            <pre><code><span class="t-dim">$</span> claude mcp add --transport http taplyne \
+    http://127.0.0.1:7788/mcp \
+    --header "X-API-Key: <span class="t-key">••••••</span>"
+<span class="t-ok">✓ Added taplyne</span>
+
+<span class="t-dim">tools:</span> list_phones  screenshot  describe_screen
+       tap_label  scroll_to_item  fill_form
+       open_app  navigate  type_text  <span class="t-dim">+14 more</span></code></pre>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ Privacy ============ -->
+      <section class="sec" id="privacy" aria-labelledby="priv-h">
+        <header class="sec-head">
+          <p class="eyebrow">Privacy</p>
+          <h2 id="priv-h">Your phone stays yours.</h2>
+        </header>
+        <div class="grid4">
+          <div class="pv"><b>Reads on your Mac</b><span>Screen text is recognized locally. Remote device traffic is encrypted.</span></div>
+          <div class="pv"><b>No tracking</b><span>No analytics. No TapLyne account.</span></div>
+          <div class="pv"><b>Locked away</b><span>Keys live in Keychain. Chats are encrypted on disk.</span></div>
+          <div class="pv"><b>Encrypted remote</b><span>Relay traffic is end‑to‑end encrypted with replay protection.</span></div>
+          <div class="pv"><b>Your clipboard</b><span>Restored after pasting, and never overwrites a newer copy.</span></div>
+          <div class="pv"><b>Local by default</b><span>The server only listens on your Mac unless you allow your network.</span></div>
+          <div class="pv"><b>Scoped access</b><span>Companion keys reach one device only. New keys revoke old ones.</span></div>
+          <div class="pv"><b>Open source</b><span>Every line is public under AGPL‑3.0. Read it, build it.</span></div>
+        </div>
+        <p class="fine center">Your selected AI provider receives requests and screen evidence. Live voice sends audio to OpenAI.</p>
+      </section>
+
+      <!-- ============ Use cases ============ -->
+      <section class="sec" aria-labelledby="use-h">
+        <header class="sec-head">
+          <p class="eyebrow">Ideas</p>
+          <h2 id="use-h">What people use it for.</h2>
+        </header>
+        <div class="uses">
+          <span>Test your own iPhone app on a real device</span>
+          <span>Walk through a signup flow and report bugs</span>
+          <span>Change a setting you can never find</span>
+          <span>Check an order or delivery status</span>
+          <span>Fill in long forms, then let you review</span>
+          <span>Help a less techy relative from your Mac</span>
+          <span>Take screenshots of every screen in an app</span>
+          <span>Give an AI agent a phone for apps with no website</span>
+        </div>
+      </section>
+
+      <!-- ============ Setup ============ -->
+      <section class="sec" id="setup" aria-labelledby="setup-h">
+        <header class="sec-head">
+          <p class="eyebrow">Get started</p>
+          <h2 id="setup-h">Your first request, step by step.</h2>
+          <p class="sec-sub">Start with USB mode. The <a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/docs/GETTING-STARTED.md">getting started guide</a> covers the first connection, AI setup and optional remote mode.</p>
+        </header>
+        <div class="grid2 setup">
+          <ol class="setup-list">
+            <li><b>Download TapLyne</b> and drag it to Applications.</li>
+            <li><b>Install the USB helper</b> with Homebrew and Terminal:<code>brew install uv &amp;&amp; uv tool install pymobiledevice3</code></li>
+            <li><b>Plug in your iPhone</b>, unlock it and tap Trust.</li>
+            <li><b>Follow the setup card</b>: allow screen capture, pair Bluetooth, turn on AssistiveTouch, calibrate.</li>
+            <li><b>Choose your AI in Settings &gt; Agent</b>, then ask it to describe the screen. Use your OpenAI API key or an existing Claude Code login.</li>
+          </ol>
+          <div class="card req">
+            <h3>You need</h3>
+            <ul>
+              <li>A Mac on macOS 15 or later (Apple silicon or Intel)</li>
+              <li>An iPhone and a USB data cable</li>
+              <li>Your OpenAI API key or an existing Claude Code login</li>
+              <li>The phone unlocked while it works</li>
+            </ul>
+            <p class="fine">TapLyne uses the “camera” permission only to receive the phone’s screen. It never turns on your Mac’s camera.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ FAQ ============ -->
+      <section class="sec" id="faq" aria-labelledby="faq-h">
+        <header class="sec-head">
+          <p class="eyebrow">Questions</p>
+          <h2 id="faq-h">Good questions.</h2>
+        </header>
+        <div class="faq">
+          <details><summary>Is it really free?</summary><p>Yes. TapLyne is free and open source. AI usage and optional relay hosting may cost extra.</p></details>
+          <details><summary>Do I need to install anything on my iPhone?</summary><p>USB mode uses the cable and Bluetooth, with no phone app. Optional remote control requires a signed runner. The text and voice companion is a separate Xcode build for iPhone and iPad.</p></details>
+          <details><summary>Does it work on an Android phone?</summary><p>No. TapLyne is built for iPhone and iPad.</p></details>
+          <details><summary>Can the AI buy things or send messages without me?</summary><p>An agent can tap Send, Buy or Submit when instructed. TapLyne does not add a universal approval screen. Review consequential actions and use Pause or Take over to stop further input; an action already delivered cannot be undone.</p></details>
+          <details><summary>Why Bluetooth?</summary><p>Your Mac pretends to be a mouse and keyboard. iPhone’s AssistiveTouch turns those into real taps. That is why nothing needs to be installed on the phone.</p></details>
+          <details><summary>Can it type in other languages and emoji?</summary><p>In USB mode, Hebrew, emoji and long text use Universal Clipboard and remain experimental. Remote mode supports exact field readback; Hebrew and emoji entry passed on a physical iPad. Fields that cannot be verified report that limitation.</p></details>
+          <details><summary>Does my phone need to be unlocked?</summary><p>Yes. Leave it unlocked while the AI works. TapLyne never handles your passcode or Face ID.</p></details>
+          <details><summary>Is this made by Apple?</summary><p>No. TapLyne is an independent project and is not affiliated with Apple.</p></details>
+        </div>
+      </section>
+
+      <!-- ============ Final CTA ============ -->
+      <section class="sec cta" aria-labelledby="cta-h">
+        <img src="/logo.png" width="64" height="64" alt="" class="cta-logo">
+        <h2 id="cta-h">Give your AI a real iPhone.</h2>
+        <p class="sec-sub">Version 0.3.0. Free and open source. Start with the guided USB setup.</p>
+        <div class="actions actions-center">
+          <a class="btn btn-primary" href="https://github.com/isaachorowitz/TapLyne-App/releases/latest">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v10m0 0-4-4m4 4 4-4M4 16.5h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span>Get TapLyne for Mac</span>
+          </a>
+          <a class="btn btn-ghost" href="https://github.com/isaachorowitz/TapLyne-App/blob/main/docs/GETTING-STARTED.md"><span>Read the docs</span></a>
+        </div>
+      </section>
     </main>
+    <footer class="foot">
+      <a class="brand" href="/"><img src="/logo.png" width="22" height="22" alt="">TapLyne</a>
+      <nav class="foot-nav" aria-label="Footer"><a href="https://github.com/isaachorowitz/TapLyne-App">GitHub</a><a href="https://github.com/isaachorowitz/TapLyne-App/releases">Releases</a><a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/docs/GETTING-STARTED.md">Docs</a><a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/SECURITY.md">Security</a></nav>
+      <p class="fine">AGPL‑3.0. Independent project, not affiliated with Apple.</p>
+    </footer>
   </div>
 </body>
 </html>

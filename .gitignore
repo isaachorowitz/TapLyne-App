@@ -9,3 +9,5 @@ node_modules/
 docs/project-environment.json
 docs/taplyne-improvement-catalogue-2026-09-30.docx
 .playwright-mcp/
+
+__pycache__/

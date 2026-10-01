@@ -139,19 +139,24 @@ public extension PhoneAutomation {
         } catch { throw InputFailure(error, delivery: completed > 0 ? .delivered : .notDelivered, completedSteps: completed) }
     }
 
-    private func settledNavigationScreen(_ phoneID: String, generation: UInt64) async throws -> ObservedAction {
-        let deadline = Date().addingTimeInterval(3)
+    internal func settledNavigationScreen(_ phoneID: String, generation: UInt64) async throws -> ObservedAction {
         var previous = try await service.screenshot(phoneID: phoneID)
+        let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         var stable = 0
+        var comparisons = 0
+        // Remote captures can consume the entire time budget. Always allow the
+        // two comparisons needed to prove three matching fresh frames, while
+        // keeping stale or continuously moving capture attempts bounded.
         repeat {
             try await Task.sleep(for: .milliseconds(200))
             try await checkGeneration(phoneID, generation)
             let current = try await service.screenshot(phoneID: phoneID)
+            comparisons += 1
             guard current.capturedAt > previous.capturedAt, Date().timeIntervalSince(current.capturedAt) <= 1 else { continue }
             stable = ScreenComparison.changed(previous.image, current.image) ? 0 : stable + 1
             if stable >= 2 { return try await observe(phoneID: phoneID) }
             previous = current
-        } while Date() < deadline
+        } while comparisons < 2 || ContinuousClock.now < deadline
         throw PhoneServiceError.failed("SCREEN_MOVING: The navigation transition did not settle. Observe before continuing.")
     }
 }

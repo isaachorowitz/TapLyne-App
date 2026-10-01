@@ -21,6 +21,8 @@ struct PhoneConfig: Codable, Equatable {
     var height: Int?
     var apps: [AppEntry]?
     var appsUpdatedAt: Date?
+    var remoteEndpoint: String?
+    var relayEnabled: Bool?
 }
 
 /// One action as it starts running on a phone.
@@ -59,11 +61,17 @@ final class Phone: ObservableObject, Identifiable {
     nonisolated let udid: String
     nonisolated var id: String { udid }
     @Published var config: PhoneConfig { didSet { onConfigChange?() } }
-    @Published fileprivate(set) var plugged = false
+    @Published var plugged = false
     @Published fileprivate(set) var captureDeviceID: String?
-    @Published fileprivate(set) var readiness: Readiness = .unplugged
+    @Published var readiness: Readiness = .unplugged
     fileprivate(set) var locked = false
     fileprivate var lockCheckedAt = Date.distantPast
+    var runnerRelay: RelayPeer?
+    var conversationRelay: RelayPeer?
+    var remote: WebDriverConnection?
+    var remoteTask: Task<Void, Never>?
+    @Published var remoteImage: ScreenImage?
+    var currentImage: ScreenImage? { remote != nil ? remoteImage : stream?.latestImage() }
     @Published var activity: String?
     @Published var lastError: String?
     /// The action the phone just started, so the screen can show where it landed.
@@ -85,6 +93,7 @@ final class Phone: ObservableObject, Identifiable {
     var title: String { config.displayName ?? config.name }
 
     var screenSize: CGSize? {
+        if let remoteImage { return CGSize(width: remoteImage.width, height: remoteImage.height) }
         if let size = stream?.frameSize { return CGSize(width: size.width, height: size.height) }
         if let w = config.width, let h = config.height { return CGSize(width: w, height: h) }
         return nil
@@ -129,6 +138,7 @@ final class PhoneRegistry: ObservableObject {
     private let usbmux = UsbmuxMonitor()
     private var cancellables: Set<AnyCancellable> = []
     private var refreshTask: Task<Void, Never>?
+    var relayServerPort: (() -> UInt16?)?
     var onControlChange: ((Phone, PhoneControlState) -> Void)?
     private let log = Logger(subsystem: "agency.ziplyne.taplyne", category: "registry")
 
@@ -160,6 +170,10 @@ final class PhoneRegistry: ObservableObject {
         Timer.publish(every: 1, on: .main, in: .common).autoconnect()
             .sink { [weak self] _ in self?.updateReadiness() }
             .store(in: &cancellables)
+        for phone in phones {
+            if phone.config.relayEnabled == true { attachRelay(phone) }
+            else if phone.config.remoteEndpoint != nil { attachRemote(phone) }
+        }
         scheduleRefresh(delay: 0)
     }
 
@@ -191,6 +205,8 @@ final class PhoneRegistry: ObservableObject {
             add(Phone(config: config))
         }
         for phone in phones {
+            if phone.config.relayEnabled == true { attachRelay(phone); continue }
+            if phone.config.remoteEndpoint != nil { attachRemote(phone); continue }
             let device = usb.first { $0.udid == phone.udid }
             if phone.plugged && device == nil { phone.control(.stop) }
             phone.plugged = device != nil
@@ -226,6 +242,7 @@ final class PhoneRegistry: ObservableObject {
     func updateReadiness() {
         restartSilentStreams()
         for phone in phones {
+            if phone.remote != nil { continue }
             let readiness: Phone.Readiness
             if !phone.plugged {
                 readiness = .unplugged
@@ -255,7 +272,7 @@ final class PhoneRegistry: ObservableObject {
     /// bound to a device that re-enumerated on USB (restart it once unlocked).
     private func restartSilentStreams() {
         let now = Date()
-        for phone in phones where phone.plugged {
+        for phone in phones where phone.plugged && phone.remote == nil {
             guard let id = phone.captureDeviceID, let stream = phone.stream else { continue }
             let last = stream.lastFrameAt ?? stream.startedAt
             let silent = now.timeIntervalSince(last) > 5
@@ -322,6 +339,9 @@ final class PhoneRegistry: ObservableObject {
 
     func remove(_ phone: Phone) {
         phone.control(.stop)
+        detachRemote(phone)
+        Keychain.delete("relay-" + phone.udid)
+        Keychain.delete("companion-" + phone.udid)
         if let id = phone.captureDeviceID { capture.stopStream(for: id) }
         phones.removeAll { $0 === phone }
         save()
@@ -329,7 +349,7 @@ final class PhoneRegistry: ObservableObject {
 
     // MARK: - Persistence
 
-    private func add(_ phone: Phone) {
+    func add(_ phone: Phone) {
         phone.onConfigChange = { [weak self] in self?.save() }
         phone.inputQueue.onStateChange = { [weak self, weak phone] state in
             guard let phone else { return }
@@ -341,6 +361,9 @@ final class PhoneRegistry: ObservableObject {
     }
 
     private func load() {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["TAPLYNE_PREVIEW"] != nil { return }
+        #endif
         guard let data = try? Data(contentsOf: Self.storeURL) else { return }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
@@ -358,6 +381,9 @@ final class PhoneRegistry: ObservableObject {
     }
 
     func save() {
+        #if DEBUG
+        if ProcessInfo.processInfo.environment["TAPLYNE_PREVIEW"] != nil { return }
+        #endif
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

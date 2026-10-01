@@ -8,12 +8,16 @@ public struct ServerConfiguration: Sendable {
     public var port: UInt16
     public var apiKey: String
     public var version: String
+    public var agentKeys: [String: String]
+    public var companionKeys: [String: String]
 
-    public init(host: String = "127.0.0.1", port: UInt16 = 7788, apiKey: String, version: String) {
+    public init(host: String = "127.0.0.1", port: UInt16 = 7788, apiKey: String, version: String, companionKeys: [String: String] = [:], agentKeys: [String: String] = [:]) {
         self.host = host
         self.port = port
         self.apiKey = apiKey
         self.version = version
+        self.companionKeys = companionKeys
+        self.agentKeys = agentKeys
     }
 }
 
@@ -48,10 +52,12 @@ public final class TaplyneHTTPServer: @unchecked Sendable {
     private var boundPort: UInt16 = 0
     private var sessions: [ObjectIdentifier: (HTTPConnection, Task<Void, Never>)] = [:]
 
-    public init(configuration: ServerConfiguration, service: any PhoneService) {
+    public init(configuration: ServerConfiguration, service: any PhoneService, conversations: (any ConversationService)? = nil) {
         self.configuration = configuration
-        self.router = Router(configuration: configuration, service: service)
+        self.router = Router(configuration: configuration, service: service, conversations: conversations)
     }
+
+    public func registerAgent(phoneID: String, key: String) { router.agentCapabilities.register(phoneID: phoneID, key: key) }
 
     /// The port the listener is bound to; 0 before `start()`. Useful when configured with port 0.
     public var port: UInt16 {

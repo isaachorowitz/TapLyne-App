@@ -26,6 +26,10 @@
 	<string>$(MACOSX_DEPLOYMENT_TARGET)</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>Taplyne pairs with your iPhone over Bluetooth as a mouse and keyboard so agents can tap and type on it.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Speak instructions to your devices in a Taplyne voice conversation.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Turn your spoken instructions into text. Supported languages are recognized on device; others may use Apple speech services.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Taplyne sees your iPhone's screen over the USB cable. It never uses your Mac's camera.</string>
 	<key>NSHumanReadableCopyright</key>

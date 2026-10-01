@@ -13,8 +13,8 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     MACOSX_DEPLOYMENT_TARGET: "15.0"
-    MARKETING_VERSION: "0.2.2"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "0.3.0"
+    CURRENT_PROJECT_VERSION: "5"
     CODE_SIGN_STYLE: Manual
     CODE_SIGN_IDENTITY: "-"
     ENABLE_HARDENED_RUNTIME: YES
@@ -29,6 +29,17 @@ targets:
           - Taplyne.entitlements
           - Info.plist
           - Bluetooth/LICENSE-AGPL-3.0
+      - path: Shared
+    postBuildScripts:
+      - name: Bundle remote runner setup tools
+        basedOnDependencyAnalysis: false
+        script: |
+          set -eu
+          OUT="$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/RunnerTools"
+          mkdir -p "$OUT/scripts" "$OUT/Shared" "$OUT/Runner"
+          cp "$SRCROOT/scripts/prepare-runner.py" "$SRCROOT/scripts/run-runner.sh" "$OUT/scripts/"
+          cp "$SRCROOT/Shared/RelayProtocol.swift" "$SRCROOT/Shared/RelayCipher.swift" "$SRCROOT/Shared/RelayPeer.swift" "$SRCROOT/Shared/RelayRPC.swift" "$OUT/Shared/"
+          cp "$SRCROOT/Runner/TLRunnerRelay.swift" "$SRCROOT/Runner/runner-launch.py" "$SRCROOT/Runner/launch-background.py" "$OUT/Runner/"
     dependencies:
       - package: TaplyneServer
     settings:
@@ -42,3 +53,24 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         COMBINE_HIDPI_IMAGES: YES
+  TaplyneCompanion:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: Companion
+        excludes: [Info.plist, Companion.entitlements]
+      - path: Shared
+      - path: Packages/TaplyneServer/Sources/TaplyneServer/EndpointPolicy.swift
+      - path: Taplyne/Resources/Assets.xcassets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: agency.ziplyne.taplyne.companion
+        PRODUCT_NAME: TaplyneCompanion
+        INFOPLIST_FILE: Companion/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Companion/Companion.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: Apple Development

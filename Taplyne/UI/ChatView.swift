@@ -7,6 +7,9 @@ struct ChatView: View {
     @ObservedObject var chat: AgentChat
     @ObservedObject var phone: Phone
     @State private var draft = ""
+    @State private var showWorkflows = false
+    @ObservedObject var realtime: RealtimeVoice
+    @ObservedObject var speech: ConversationSpeech
     @State private var lightbox: LightboxItem?
     @FocusState private var composerFocused: Bool
 
@@ -41,6 +44,9 @@ struct ChatView: View {
             }
             composer
         }
+        .onAppear { chat.selectDevice(phone.udid); configureSpeech() }
+        .onChange(of: phone.udid) { chat.selectDevice(phone.udid); configureSpeech() }
+        .sheet(isPresented: $showWorkflows) { WorkflowView(chat: chat, draft: $draft) }
         .sheet(item: $lightbox) { item in
             LightboxView(images: screenshots, index: item.index)
         }
@@ -62,13 +68,14 @@ struct ChatView: View {
                     if chat.running {
                         StatusDot(color: .accentColor, pulsing: true, size: 6)
                     }
-                    Text(chat.paused ? "Paused for manual control" : chat.running ? "Working on \(phone.title)" : "Claude Code")
+                    Text(chat.paused ? "Paused for manual control" : chat.running ? "Working on \(phone.title)" : model.agentProvider == "chatgpt" ? "ChatGPT" : model.agentProvider == "openai" ? "OpenAI API" : "Claude Code")
                         .contentTransition(.opacity)
                 }
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
             Spacer()
+            Button { showWorkflows = true } label: { Image(systemName: "list.bullet.rectangle") }.help("Saved workflows")
             if chat.paused {
                 Button("Resume") { model.control(phone, .resume) }
                     .buttonStyle(.borderedProminent)
@@ -269,7 +276,7 @@ struct ChatView: View {
     // MARK: - Composer
 
     private var canSend: Bool {
-        !draft.trimmingCharacters(in: .whitespaces).isEmpty && !chat.running
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     private var composer: some View {
@@ -279,8 +286,24 @@ struct ChatView: View {
                 .lineLimit(1 ... 6)
                 .focused($composerFocused)
                 .onSubmit(send)
+            if let error = realtime.error ?? speech.error { Text(error).font(.caption).foregroundStyle(.red) }
             HStack {
-                Text(chat.running ? "⌘. to stop" : "Claude Code · ⌘↩ to send")
+                Button(realtime.active ? "End live voice" : realtime.connecting ? "Cancel live voice" : "Live AI voice") {
+                    if realtime.active || realtime.connecting { realtime.stop() } else { speech.stop(); realtime.start() }
+                }.help("Full duplex voice through OpenAI. Requires a separately billed API key in Settings.")
+                if realtime.active { Button("Interrupt") { realtime.interrupt() } }
+            }
+            if realtime.active { Text(realtime.transcript).font(.caption).lineLimit(3) }
+            if speech.speaking { Button("Interrupt reply") { speech.interrupt() } }
+            if speech.listening { Text(speech.transcript.isEmpty ? "Listening…" : speech.transcript).font(.caption).foregroundStyle(.secondary) }
+            HStack {
+                Button { realtime.stop(); speech.listening ? speech.stop() : speech.start() } label: {
+                    Image(systemName: speech.listening ? "mic.fill" : "mic")
+                }.help("Start or stop voice conversation")
+                Picker("Voice language", selection: $speech.localeIdentifier) {
+                    Text("English").tag("en-US"); Text("עברית").tag("he-IL")
+                }.labelsHidden().frame(width: 85).disabled(speech.listening)
+                Text(chat.running ? "Type or speak to steer" : "⌘↩ to send")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                     .contentTransition(.opacity)
@@ -303,7 +326,7 @@ struct ChatView: View {
 
     private var sendStopButton: some View {
         Button {
-            if chat.running { chat.stop() } else { send() }
+            if chat.running && !canSend { chat.stop() } else { send() }
         } label: {
             ZStack {
                 Circle().fill(chat.running ? AnyShapeStyle(Color.primary)
@@ -324,10 +347,37 @@ struct ChatView: View {
         .animation(Motion.standard, value: canSend)
     }
 
+    private func configureSpeech() {
+        if model.voicePhoneID != nil && model.voicePhoneID != phone.udid { realtime.stop(); speech.stop() }
+        model.voicePhoneID = phone.udid
+        realtime.credentials = {
+            guard let key = model.openAIKey(voice: true), !key.isEmpty else { throw RealtimeVoice.VoiceError("Add an OpenAI API key in Settings. Live voice is billed separately from ChatGPT.") }
+            return key
+        }
+        realtime.interruptTask = { if chat.running { model.control(phone, .pause) } }
+        realtime.runTask = { text in
+            let previous = Set(chat.entries.map(\.id))
+            chat.steer(text)
+            for _ in 0..<600 {
+                try Task.checkCancellation()
+                if !chat.running {
+                    return chat.entries.filter { !previous.contains($0.id) && [.assistant, .error, .status].contains($0.kind) }.map(\.text).joined(separator: "\n")
+                }
+                try await Task.sleep(for: .seconds(1))
+            }
+            model.control(phone, .pause)
+            throw RealtimeVoice.VoiceError("The voice task reached its limit and was paused.")
+        }
+
+        speech.onUtterance = { text in chat.steer(text) }
+        speech.onInterruption = { if chat.running { model.control(phone, .pause) } }
+        chat.onAssistantText = { text in speech.speak(text) }
+    }
+
     private func send() {
         let text = draft
         draft = ""
-        chat.send(text)
+        chat.steer(text)
     }
 }
 

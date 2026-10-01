@@ -1,0 +1,33 @@
+services:
+  relay:
+    build: .
+    restart: unless-stopped
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    environment:
+      NODE_ENV: production
+      TAPLYNE_HOST: 0.0.0.0
+      TAPLYNE_PORT: 8787
+      TAPLYNE_PROXY_MODE: "1"
+      TAPLYNE_ENROLLMENT_TOKEN: ${TAPLYNE_ENROLLMENT_TOKEN:?Set a strong enrollment token}
+    networks: [private]
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    environment:
+      TAPLYNE_DOMAIN: ${TAPLYNE_DOMAIN:?Set the relay domain}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [private, public]
+
+networks:
+  private:
+    internal: true
+  public: {}
+
+volumes:
+  caddy_data: {}
+  caddy_config: {}

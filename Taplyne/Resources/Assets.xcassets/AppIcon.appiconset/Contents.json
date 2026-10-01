@@ -5,6 +5,12 @@
   },
   "images" : [
     {
+      "idiom" : "universal",
+      "platform" : "ios",
+      "filename" : "icon_512x512@2x.png",
+      "size" : "1024x1024"
+    },
+    {
       "idiom" : "mac",
       "scale" : "1x",
       "filename" : "icon_16x16@1x.png",
