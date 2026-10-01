@@ -533,3 +533,8 @@ html{scroll-behavior:smooth;scroll-padding-top:84px}
   .pv b{font-size:15px}
   .pv span{font-size:13.5px}
 }
+.inline-link{color:var(--tap);text-decoration:underline;text-decoration-color:rgba(77,181,255,.35);text-underline-offset:3px}
+.inline-link:hover{text-decoration-color:var(--tap)}
+.setup-list li.setup-more{padding-left:20px;border-style:dashed;counter-increment:none}
+.setup-list li.setup-more::before{content:none}
+.setup-list a{color:var(--tap);text-decoration:underline;text-underline-offset:3px}

@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070d">
+  <meta name="color-scheme" content="dark">
+  <title>Setup guide · TapLyne</title>
+  <meta name="description" content="Step-by-step TapLyne setup for people and AI agents: USB and Bluetooth, connecting agents over MCP or REST, voice, remote mode with an encrypted relay, and the companion app.">
+  <link rel="alternate" type="text/markdown" href="/setup.md" title="Setup guide (Markdown)">
+  <link rel="icon" type="image/png" href="/favicon.png">
+  <link rel="preload" href="/fonts/dm-sans.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/docs.css">
+  <script src="/docs.js" defer></script>
+</head>
+<body class="docs-body">
+  <a class="skip-link" href="#doc">Skip to content</a>
+  <div class="page docs-page">
+    <header class="bar">
+      <a class="brand" href="/" aria-label="TapLyne home"><img src="/logo.png" width="28" height="28" alt="">TapLyne</a>
+      <nav class="bar-nav" aria-label="Main">
+        <a class="bar-link" href="/">Home</a>
+        <a class="bar-link" href="/setup.md">Markdown</a>
+        <a class="bar-gh" href="https://github.com/isaachorowitz/TapLyne-App" aria-label="TapLyne on GitHub"><span>GitHub</span></a>
+      </nav>
+    </header>
+    <div class="docs-layout">
+      <aside class="docs-toc" aria-label="On this page">
+        <p class="toc-title">On this page</p>
+        <ol><li><a href="#rules-for-agents-following-this-guide">Rules for agents following this guide</a></li><li><a href="#what-you-need">What you need</a></li><li><a href="#part-1-basic-setup-usb-bluetooth">Part 1: Basic setup (USB + Bluetooth)</a></li><li><a href="#part-2-connect-an-outside-ai-agent-mcp-or-rest">Part 2: Connect an outside AI agent (MCP or REST)</a></li><li><a href="#part-3-optional-hebrew-screen-reading">Part 3: Optional Hebrew screen reading</a></li><li><a href="#part-4-voice">Part 4: Voice</a></li><li><a href="#part-5-remote-mode-control-the-phone-away-from-the-mac">Part 5: Remote mode (control the phone away from the Mac)</a></li><li><a href="#part-6-companion-app-talk-to-your-mac-s-ai-from-the-phone">Part 6: Companion app (talk to your Mac's AI from the phone)</a></li><li><a href="#troubleshooting">Troubleshooting</a></li><li><a href="#how-results-work">How results work</a></li></ol>
+      </aside>
+      <main id="doc" class="doc">
+        <h1>TapLyne setup guide</h1>
+        <section class="agent-box" aria-labelledby="agent-box-h">
+          <h2 id="agent-box-h" class="agent-box-h">Let your AI do the setup</h2>
+          <p>Paste this into Claude Code, Codex, Cursor or any agent that can run commands on your Mac. It reads the guide and does the work. You only tap the phone when it asks.</p>
+          <div class="code"><button type="button" class="copy" aria-label="Copy prompt">Copy</button><pre><code id="agent-prompt">Set up TapLyne on this Mac so you can control my iPhone. Read https://taplyne.zippy-host.workers.dev/setup.md and follow it step by step. Run the commands yourself, tell me when a step needs my hands, and check each step before moving on.</code></pre></div>
+          <p class="fine">Agents can read the plain version at <a href="/setup.md">/setup.md</a>.</p>
+        </section>
+<p>TapLyne is a free, open-source Mac app that lets an AI agent see, tap, scroll and type on a real iPhone or iPad. This guide is written so a person or an AI agent can follow it step by step. Each step says what to do, then how to check it worked.</p>
+<p>Source code: <a href="https://github.com/isaachorowitz/TapLyne-App">github.com/isaachorowitz/TapLyne-App</a></p>
+<h2 id="rules-for-agents-following-this-guide"><a class="anchor" href="#rules-for-agents-following-this-guide" aria-hidden="true" tabindex="-1">#</a>Rules for agents following this guide</h2>
+<ul>
+<li>Run the terminal commands yourself. Hand the person only the steps that need their hands: tapping Trust on the phone, Bluetooth pairing, AssistiveTouch, granting macOS permissions, signing in to accounts, and anything involving a password, passcode or Face ID.</li>
+<li>Never print, log or paste an API key, enrollment token or pairing code into a chat, issue or file that others can read.</li>
+<li>Deploying a relay to a server is optional and changes infrastructure. Ask the person before doing it.</li>
+<li>After setup, call <code>list_phones</code>, then <code>describe_screen</code>, before any other action.</li>
+</ul>
+<h2 id="what-you-need"><a class="anchor" href="#what-you-need" aria-hidden="true" tabindex="-1">#</a>What you need</h2>
+<ul>
+<li>A Mac on macOS 15 or later (Apple silicon or Intel).</li>
+<li>An iPhone or iPad and a USB data cable (not a charge-only cable).</li>
+<li>An AI to do the thinking: an OpenAI API key, a ChatGPT account, or Claude Code installed and logged in.</li>
+<li>Homebrew (<a href="https://brew.sh">brew.sh</a>) for the USB helper.</li>
+</ul>
+<p>Remote mode and the companion app also need Xcode, an Apple Developer account, Developer Mode on the device, and a relay server you control. Skip them if the phone stays plugged into the Mac.</p>
+<h2 id="part-1-basic-setup-usb-bluetooth"><a class="anchor" href="#part-1-basic-setup-usb-bluetooth" aria-hidden="true" tabindex="-1">#</a>Part 1: Basic setup (USB + Bluetooth)</h2>
+<h3 id="1-install-the-app"><a class="anchor" href="#1-install-the-app" aria-hidden="true" tabindex="-1">#</a>1. Install the app</h3>
+<p>Download <a href="https://github.com/isaachorowitz/TapLyne-App/releases/download/v0.3.0/Taplyne.dmg">github.com/isaachorowitz/TapLyne-App/releases/download/v0.3.0/Taplyne.dmg</a>, open it, and drag Taplyne to Applications.</p>
+<p>Check: <code>ls /Applications/Taplyne.app</code> succeeds.</p>
+<h3 id="2-install-the-usb-helper"><a class="anchor" href="#2-install-the-usb-helper" aria-hidden="true" tabindex="-1">#</a>2. Install the USB helper</h3>
+<div class="code"><button type="button" class="copy" aria-label="Copy command">Copy</button><pre><code data-lang="sh">brew install uv &amp;&amp; uv tool install pymobiledevice3</code></pre></div>
+<p>Check: <code>command -v pymobiledevice3</code> prints a path.</p>
+<h3 id="3-plug-in-the-phone"><a class="anchor" href="#3-plug-in-the-phone" aria-hidden="true" tabindex="-1">#</a>3. Plug in the phone</h3>
+<p>Connect the iPhone with the USB cable and unlock it. If the phone asks &quot;Trust This Computer?&quot;, the person taps Trust and enters the passcode.</p>
+<p>Check: <code>pymobiledevice3 usbmux list</code> lists the phone.</p>
+<h3 id="4-finish-the-setup-card"><a class="anchor" href="#4-finish-the-setup-card" aria-hidden="true" tabindex="-1">#</a>4. Finish the setup card</h3>
+<p>Open Taplyne and select the phone in the sidebar. The setup card walks through four steps. The person does these:</p>
+<ol>
+<li>Allow Camera access. macOS uses this permission for the phone's screen feed. The Mac's own camera is never turned on.</li>
+<li>Click Prepare Bluetooth Pairing, then on the iPhone open Settings &gt; Bluetooth, pick this Mac and approve the matching pairing code.</li>
+<li>Turn on AssistiveTouch (Settings &gt; Accessibility &gt; Touch &gt; AssistiveTouch).</li>
+<li>With the Home Screen showing, click Calibrate Pointer. Do not touch the phone while it calibrates.</li>
+</ol>
+<p>Check: the phone shows as ready in Taplyne's sidebar and its live screen appears in the middle.</p>
+<h3 id="5-pick-the-ai-for-the-built-in-chat"><a class="anchor" href="#5-pick-the-ai-for-the-built-in-chat" aria-hidden="true" tabindex="-1">#</a>5. Pick the AI for the built-in chat</h3>
+<p>Open Taplyne &gt; Settings &gt; Agent and choose a Reasoning provider:</p>
+<ul>
+<li><strong>OpenAI API key (BYOK):</strong> paste the key, click Save key, then Validate saved key. It is stored in the Mac's Keychain.</li>
+<li><strong>ChatGPT plan:</strong> click sign in and follow the ChatGPT sign-in steps.</li>
+<li><strong>Claude Code login:</strong> install Claude Code (<a href="https://code.claude.com/docs/en/overview">code.claude.com/docs/en/overview</a>) and log in first. No key needed.</li>
+</ul>
+<p>Check: in the chat panel, send &quot;Describe the screen without tapping anything.&quot; Compare the reply with the phone, then send &quot;Go Home.&quot;</p>
+<h2 id="part-2-connect-an-outside-ai-agent-mcp-or-rest"><a class="anchor" href="#part-2-connect-an-outside-ai-agent-mcp-or-rest" aria-hidden="true" tabindex="-1">#</a>Part 2: Connect an outside AI agent (MCP or REST)</h2>
+<p>Taplyne runs a local server at <code>http://127.0.0.1:7788</code>. Open Settings &gt; Connect AI to copy the commands with your API key already filled in.</p>
+<h3 id="claude-code"><a class="anchor" href="#claude-code" aria-hidden="true" tabindex="-1">#</a>Claude Code</h3>
+<div class="code"><button type="button" class="copy" aria-label="Copy command">Copy</button><pre><code data-lang="sh">claude mcp add --scope user --transport http taplyne \
+  http://127.0.0.1:7788/mcp --header &quot;X-API-Key: &lt;your-local-key&gt;&quot;</code></pre></div>
+<h3 id="any-other-mcp-client"><a class="anchor" href="#any-other-mcp-client" aria-hidden="true" tabindex="-1">#</a>Any other MCP client</h3>
+<ul>
+<li>Transport: Streamable HTTP</li>
+<li>URL: <code>http://127.0.0.1:7788/mcp</code></li>
+<li>Header: <code>X-API-Key: &lt;your-local-key&gt;</code></li>
+</ul>
+<h3 id="rest"><a class="anchor" href="#rest" aria-hidden="true" tabindex="-1">#</a>REST</h3>
+<div class="code"><button type="button" class="copy" aria-label="Copy command">Copy</button><pre><code data-lang="sh">curl -H &quot;X-API-Key: &lt;your-local-key&gt;&quot; http://127.0.0.1:7788/v1/phones</code></pre></div>
+<p>Check: the response lists the phone.</p>
+<h3 id="live-dashboard"><a class="anchor" href="#live-dashboard" aria-hidden="true" tabindex="-1">#</a>Live dashboard</h3>
+<p>Open <code>http://127.0.0.1:7788/?key=&lt;your-local-key&gt;</code> in a browser. Treat that URL like a password.</p>
+<h3 id="agent-skill"><a class="anchor" href="#agent-skill" aria-hidden="true" tabindex="-1">#</a>Agent skill</h3>
+<p>Give your agent the TapLyne skill so it knows the look, act, check loop: <a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/skills/taplyne/SKILL.md">github.com/isaachorowitz/TapLyne-App/blob/main/skills/taplyne/SKILL.md</a></p>
+<p>The server listens only on this Mac by default. Settings &gt; Server &gt; &quot;Allow other devices on the network&quot; opens it to your network; use that only on a network you trust.</p>
+<h2 id="part-3-optional-hebrew-screen-reading"><a class="anchor" href="#part-3-optional-hebrew-screen-reading" aria-hidden="true" tabindex="-1">#</a>Part 3: Optional Hebrew screen reading</h2>
+<p>English text reading is built in. For Hebrew, from a source checkout:</p>
+<div class="code"><button type="button" class="copy" aria-label="Copy command">Copy</button><pre><code data-lang="sh">git clone https://github.com/isaachorowitz/TapLyne-App.git
+cd TapLyne-App
+scripts/install-ocr.sh</code></pre></div>
+<h2 id="part-4-voice"><a class="anchor" href="#part-4-voice" aria-hidden="true" tabindex="-1">#</a>Part 4: Voice</h2>
+<p>On the Mac, click Live AI voice in the chat panel for a spoken conversation, or the microphone button for dictation. The companion app has the same options (Part 6). Live voice uses OpenAI Realtime and needs an OpenAI API key saved in Mac Settings &gt; Agent, even when ChatGPT or Claude Code does the reasoning. To bill voice to a different OpenAI project, paste a key into &quot;Optional voice-only OpenAI key&quot; and click Save voice override.</p>
+<p>Native dictation also works with whichever AI does the reasoning.</p>
+<p>Replies default to English. Ask explicitly to switch languages.</p>
+<h2 id="part-5-remote-mode-control-the-phone-away-from-the-mac"><a class="anchor" href="#part-5-remote-mode-control-the-phone-away-from-the-mac" aria-hidden="true" tabindex="-1">#</a>Part 5: Remote mode (control the phone away from the Mac)</h2>
+<p>Remote mode installs a small signed helper (an XCTest runner) on the phone. After that, the phone can be unplugged and controlled over Wi-Fi or cellular through an encrypted relay you host. The Mac must stay on and online.</p>
+<h3 id="5a-deploy-the-relay-one-time-needs-a-server"><a class="anchor" href="#5a-deploy-the-relay-one-time-needs-a-server" aria-hidden="true" tabindex="-1">#</a>5a. Deploy the relay (one time, needs a server)</h3>
+<p>Ask the person before running this. You need a Linux server with Docker and a domain name pointed at it.</p>
+<div class="code"><button type="button" class="copy" aria-label="Copy command">Copy</button><pre><code data-lang="sh">git clone https://github.com/isaachorowitz/TapLyne-App.git
+cd TapLyne-App/Relay
+export TAPLYNE_DOMAIN=relay.example.com
+export TAPLYNE_ENROLLMENT_TOKEN=&quot;$(openssl rand -hex 32)&quot;
+docker compose up --build -d</code></pre></div>
+<p>Caddy gets the TLS certificate automatically. Save the enrollment token somewhere private; the Mac needs it once.</p>
+<p>Full relay details: <a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/Relay/README.md">github.com/isaachorowitz/TapLyne-App/blob/main/Relay/README.md</a></p>
+<p>Check: <code>curl https://relay.example.com/health</code> returns <code>{&quot;status&quot;:&quot;ok&quot;}</code>.</p>
+<h3 id="5b-prepare-the-mac-and-the-phone"><a class="anchor" href="#5b-prepare-the-mac-and-the-phone" aria-hidden="true" tabindex="-1">#</a>5b. Prepare the Mac and the phone</h3>
+<ul>
+<li>Install Xcode and add the Apple Developer account in Xcode &gt; Settings &gt; Accounts.</li>
+<li><code>brew install uv</code> (already done in Part 1).</li>
+<li>On the phone: Settings &gt; Privacy &amp; Security &gt; Developer Mode &gt; On, then restart when asked.</li>
+<li>Keep the phone plugged in and unlocked for this part.</li>
+</ul>
+<h3 id="5c-install-the-runner"><a class="anchor" href="#5c-install-the-runner" aria-hidden="true" tabindex="-1">#</a>5c. Install the runner</h3>
+<p>In Taplyne, select the phone in the sidebar, then open Settings &gt; Remote device:</p>
+<ol>
+<li>Apple team ID: your 10-character team ID (Xcode &gt; Settings &gt; Accounts, or developer.apple.com &gt; Membership).</li>
+<li>Relay address: <code>wss://relay.example.com</code></li>
+<li>Relay enrollment token: the token from step 5a.</li>
+<li>Click Install and pair runner.</li>
+</ol>
+<p>Taplyne downloads the pinned runner source, builds and signs it with Xcode, installs it, pairs it and starts it in the background. The signing profile's expiry date appears when it finishes. Click Reinstall and renew runner before that date.</p>
+<h3 id="5d-check-it-before-leaving-the-mac"><a class="anchor" href="#5d-check-it-before-leaving-the-mac" aria-hidden="true" tabindex="-1">#</a>5d. Check it before leaving the Mac</h3>
+<ol>
+<li>Check the Device connection and open a fresh screen in Taplyne. A successful install alone does not prove control. If it shows paused, look at the screen and click Resume. Then send &quot;Go Home.&quot;</li>
+<li>Unplug the USB cable and repeat.</li>
+<li>Switch the phone to cellular or another Wi-Fi network and repeat.</li>
+</ol>
+<p>If iOS stops the runner or the phone restarts, plug it back in and run setup again.</p>
+<p>Revoke access at any time with Revoke relay and companion pairing.</p>
+<h2 id="part-6-companion-app-talk-to-your-mac-s-ai-from-the-phone"><a class="anchor" href="#part-6-companion-app-talk-to-your-mac-s-ai-from-the-phone" aria-hidden="true" tabindex="-1">#</a>Part 6: Companion app (talk to your Mac's AI from the phone)</h2>
+<p>The companion app for iPhone and iPad sends text and voice requests to the AI on your Mac. It is not on the App Store or TestFlight yet, so it is installed with Xcode.</p>
+<h3 id="6a-build-and-install"><a class="anchor" href="#6a-build-and-install" aria-hidden="true" tabindex="-1">#</a>6a. Build and install</h3>
+<p>Add the Apple account in Xcode &gt; Settings &gt; Accounts, connect the unlocked device, then:</p>
+<div class="code"><button type="button" class="copy" aria-label="Copy command">Copy</button><pre><code data-lang="sh">brew install xcodegen uv
+git clone https://github.com/isaachorowitz/TapLyne-App.git
+cd TapLyne-App
+TAPLYNE_DEVELOPMENT_TEAM=&lt;your-team-id&gt; bash scripts/build-companion.sh device &lt;device-udid&gt;
+xcrun devicectl device install app --device &lt;device-udid&gt; .build/CompanionDevice/Build/Products/Debug-iphoneos/TaplyneCompanion.app
+xcrun devicectl device process launch --device &lt;device-udid&gt; agency.ziplyne.taplyne.companion</code></pre></div>
+<p>Find the device UDID with <code>xcrun devicectl list devices</code>. To use Xcode instead, run <code>xcodegen generate</code>, open <code>Taplyne.xcodeproj</code>, pick the TaplyneCompanion scheme and the device, set your team under Signing &amp; Capabilities, and click Run.</p>
+<h3 id="6b-pair"><a class="anchor" href="#6b-pair" aria-hidden="true" tabindex="-1">#</a>6b. Pair</h3>
+<p>In Taplyne, open Settings &gt; Phone &amp; iPad and select the device to control.</p>
+<ul>
+<li><strong>Through the relay (works anywhere):</strong> finish Part 5 first, then click Load relay pairing code.</li>
+<li><strong>On the same private network:</strong> enter the Mac's reachable address and click Create a new companion key.</li>
+</ul>
+<p>Open the companion on the phone, tap Scan pairing code, check the address and tap Connect.</p>
+<p>Check: send &quot;Describe the screen without tapping anything.&quot; For voice, choose Live AI voice (API), tap Start live voice and allow microphone access. Wait for Microphone connected and a moving input meter, then say &quot;Go Home.&quot;</p>
+<p>A companion key can control only the one device it was made for. Making a new key cancels the old one. Keep the QR code private.</p>
+<h2 id="troubleshooting"><a class="anchor" href="#troubleshooting" aria-hidden="true" tabindex="-1">#</a>Troubleshooting</h2>
+<ul>
+<li><strong>Phone not found:</strong> unlock it, tap Trust, try another cable. <code>pymobiledevice3 usbmux list</code> should list it.</li>
+<li><strong>Black screen:</strong> unlock the phone. If it stays black, use Restart iPhone in the setup card.</li>
+<li><strong>Bluetooth not working:</strong> prepare pairing again in Taplyne, then pick this Mac in the iPhone's Bluetooth settings.</li>
+<li><strong>Taps land in the wrong spot:</strong> calibrate again on the Home Screen without touching the phone.</li>
+<li><strong>AssistiveTouch menu in the way:</strong> turn off Always Show Menu in Settings &gt; Accessibility &gt; Touch &gt; AssistiveTouch. Keep AssistiveTouch on.</li>
+<li><strong>Typed text not verified:</strong> check that Handoff is on and the Mac and phone use the same Apple Account.</li>
+<li><strong>Remote device offline:</strong> make sure the Mac is awake and online and the phone is unlocked. Check the relay address. If the runner stopped, plug in and run setup again.</li>
+<li><strong>Runner signing failed:</strong> open Xcode, confirm the account, team and device signing access, and check Developer Mode. Then retry setup.</li>
+<li><strong>Voice cannot start:</strong> validate the OpenAI key in Mac Settings &gt; Agent and allow microphone access on the device.</li>
+<li><strong>Voice shows Recovering:</strong> let it finish. If it fails, end voice and start again.</li>
+</ul>
+<h2 id="how-results-work"><a class="anchor" href="#how-results-work" aria-hidden="true" tabindex="-1">#</a>How results work</h2>
+<p>Every action returns a fresh screenshot and one of three results:</p>
+<ul>
+<li><code>verified</code>: the expected result is on screen.</li>
+<li><code>unverified</code>: input may have arrived, but the result is not proven. Look before continuing.</li>
+<li><code>failed</code>: it did not work. Check <code>input_delivered</code> before trying again.</li>
+</ul>
+<p>Never automatically repeat an uncertain send, purchase or form submission.</p>
+      </main>
+    </div>
+    <footer class="foot">
+      <a class="brand" href="/"><img src="/logo.png" width="22" height="22" alt="">TapLyne</a>
+      <nav class="foot-nav" aria-label="Footer"><a href="/">Home</a><a href="https://github.com/isaachorowitz/TapLyne-App">GitHub</a><a href="https://github.com/isaachorowitz/TapLyne-App/releases">Releases</a><a href="https://github.com/isaachorowitz/TapLyne-App/blob/main/SECURITY.md">Security</a></nav>
+      <p class="fine">AGPL‑3.0. Independent project, not affiliated with Apple.</p>
+    </footer>
+  </div>
+</body>
+</html>

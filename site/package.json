@@ -5,8 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev --ip 127.0.0.1 --port 8788",
-    "check": "node scripts/check.mjs",
-    "deploy": "wrangler deploy"
+    "check": "node scripts/build-docs.mjs --check && node scripts/check.mjs",
+    "deploy": "wrangler deploy",
+    "docs": "node scripts/build-docs.mjs",
+    "links": "node scripts/links.mjs"
   },
-  "devDependencies": { "wrangler": "4.144.0" }
+  "devDependencies": {
+    "wrangler": "4.144.0"
+  }
 }
